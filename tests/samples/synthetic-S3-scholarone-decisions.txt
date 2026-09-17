@@ -1,0 +1,7 @@
+Manuscripts with Decisions
+STATUS	ID	TITLE	SUBMITTED	DECISIONED
+ADM: Editorial Office
+Reject/Resubmit: Major Revisions Required and External Reviews Needed (12-Aug-2026)	TMI-2026-0212	Diffusion priors for sparse-view photoacoustic tomography	10-Feb-2026	12-Aug-2026
+a revision has been created
+ADM: Editorial Office
+Accept with Minor Revisions (03-Sep-2026)	TMI-2026-0355	Cross-modal registration of histology and ex vivo MRI via implicit neural fields	28-Mar-2026	03-Sep-2026

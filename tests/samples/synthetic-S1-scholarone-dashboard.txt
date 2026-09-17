@@ -1,0 +1,22 @@
+ScholarOne Manuscripts
+IEEE Transactions on Medical Imaging
+Home   Author   Review
+Author Dashboard
+Submitted Manuscripts 3
+Revised Manuscripts in Draft 0
+Manuscripts with Decisions 1
+Manuscripts I Have Co-Authored 2
+Start New Submission
+5 Most Recent E-mails
+
+Submitted Manuscripts
+STATUS	ID	TITLE	SUBMITTED
+ADM: Editorial Office
+Awaiting Reviewer Scores	TMI-2026-0412	Self-supervised denoising of low-dose CT with anatomy-aware contrastive priors	14-Mar-2026
+View Submission
+ADM: Editorial Office
+Awaiting AE Recommendation	TMI-2026-0587.R1	Uncertainty-guided segmentation of cardiac MRI under domain shift	02-Feb-2026
+View Submission
+ADM: Editorial Office
+Awaiting EIC Decision	TMI-2026-0903	Physics-informed reconstruction for accelerated diffusion-weighted imaging	21-Apr-2026
+View Submission

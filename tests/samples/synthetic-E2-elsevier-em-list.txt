@@ -1,0 +1,7 @@
+Editorial Manager
+Author Main Menu
+Submissions Being Processed (3)
+Action Links	Manuscript Number	Title	Initial Date Submitted	Status Date	Current Status
+Action Links	JCLEPRO-D-26-04521	Life-cycle carbon accounting of prefabricated residential buildings in cold regions	03/02/2026	07/15/2026	Under Review
+Action Links	JCLEPRO-D-26-05110R1	Coupling coordination between green finance and industrial upgrading: panel evidence from 280 cities	01/20/2026	08/30/2026	Revise
+Action Links	ENVRES-D-25-09876	Microplastic transport in estuarine sediments under tidal forcing	11/05/2025	09/10/2026	Decision in Process

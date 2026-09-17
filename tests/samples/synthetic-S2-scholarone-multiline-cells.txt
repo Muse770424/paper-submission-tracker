@@ -1,0 +1,18 @@
+Author Dashboard
+Submitted Manuscripts
+STATUS
+ID
+TITLE
+SUBMITTED
+ADM: Editorial Office
+Awaiting Reviewer Assignment
+TVT-2025-03310
+Graph neural networks for V2X beam tracking in dense urban canyons
+09-Nov-2025
+Contact Journal
+ADM: Editorial Office
+Awaiting AE Assignment
+TVT-2026-00127
+Federated split learning for vehicular edge computing with partial participation
+05-Jan-2026
+Contact Journal

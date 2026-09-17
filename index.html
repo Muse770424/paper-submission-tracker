@@ -1,0 +1,4343 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="description" content="论文投稿状态总览：把所有稿件集中到一个页面，数据只保存在本机浏览器。">
+<meta name="color-scheme" content="light">
+<title>投稿状态总览</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%232F6BD8'/%3E%3Cpath d='M9 7h10l4 4v14H9z' fill='%23fff'/%3E%3Cpath d='M12 17l3 3 5-6' stroke='%232F6BD8' stroke-width='2.2' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+<style>
+/* ========== 基础变量 ========== */
+:root {
+  --bg: #F4F5F7;
+  --surface: #FFFFFF;
+  --text: #1F2328;
+  --text-2: #5B616B;
+  --border: #E3E6EB;
+  --input-border: #CDD2DA;
+  --primary: #2F6BD8;
+  --primary-hover: #2459BA;
+  --primary-soft: #EAF1FC;
+  --danger: #C8373A;
+  --radius: 12px;
+  --shadow: 0 1px 2px rgba(16, 24, 40, .05), 0 1px 3px rgba(16, 24, 40, .06);
+  --tap: 44px; /* 手机上可点区域的最小高度 */
+  color-scheme: light;
+  font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Hiragino Sans GB",
+    "Microsoft YaHei", "Noto Sans CJK SC", "Source Han Sans SC", "Segoe UI", sans-serif;
+}
+
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+  margin: 0;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg);
+  color: var(--text);
+  font-size: 15px;
+  line-height: 1.5;
+}
+body.modal-open { overflow: hidden; }
+button, input, select, textarea { font: inherit; color: inherit; }
+:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+[hidden] { display: none !important; }
+
+/* ========== 顶部栏 ========== */
+.topbar {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  padding-top: env(safe-area-inset-top);
+  background: rgba(255, 255, 255, .94);
+  border-bottom: 1px solid var(--border);
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+}
+.topbar-inner {
+  max-width: 880px;
+  margin: 0 auto;
+  padding: 10px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.app-title { margin: 0; font-size: 18px; font-weight: 700; white-space: nowrap; }
+
+/* ========== 按钮 ========== */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: var(--tap);
+  padding: 0 16px;
+  border: 1px solid var(--input-border);
+  border-radius: 10px;
+  background: #fff;
+  font-size: 15px;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.btn:hover { background: #F6F7F9; }
+.btn-primary { background: var(--primary); border-color: var(--primary); color: #fff; }
+.btn-primary:hover { background: var(--primary-hover); border-color: var(--primary-hover); }
+.btn-danger { background: var(--danger); border-color: var(--danger); color: #fff; }
+.btn-danger:hover { background: #AD2C2F; border-color: #AD2C2F; }
+.btn-text {
+  min-width: var(--tap);
+  padding: 0 12px;
+  border-color: transparent;
+  background: transparent;
+  color: var(--text-2);
+  font-weight: 500;
+}
+.btn-text:hover { background: #EEF0F3; color: var(--text); }
+.btn-text.is-danger:hover { background: #FCEAEA; color: var(--danger); }
+.btn-icon {
+  width: var(--tap);
+  height: var(--tap);
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--text-2);
+  font-size: 26px;
+  line-height: 1;
+  cursor: pointer;
+}
+.btn-icon:hover { background: #EEF0F3; }
+
+/* ========== 主体与提示条 ========== */
+.container {
+  flex: 1;
+  width: 100%;
+  max-width: 880px;
+  margin: 0 auto;
+  padding: 4px 16px 24px;
+}
+.banner {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 12px;
+  padding: 8px 8px 8px 14px;
+  border: 1px solid #F3D3AE;
+  border-radius: 10px;
+  background: #FDF3E7;
+  color: #7A3E06;
+  font-size: 14px;
+}
+.banner p { flex: 1; margin: 0; overflow-wrap: anywhere; }
+.banner .btn-text { color: #7A3E06; flex-shrink: 0; }
+
+/* ========== 论文卡片 ========== */
+.paper-list {
+  list-style: none;
+  margin: 12px 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.paper-card {
+  /* 屏幕外的卡片跳过排版和绘制，500 条时搜索、筛选、排序也不卡 */
+  content-visibility: auto;
+  contain-intrinsic-size: auto 132px;
+  padding: 10px 12px 10px 16px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  box-shadow: var(--shadow);
+  cursor: pointer;
+}
+.card-top { display: flex; align-items: flex-start; gap: 8px; }
+.title-btn {
+  flex: 1;
+  min-width: 0;
+  min-height: var(--tap);
+  padding: 6px 0;
+  border: 0;
+  background: none;
+  text-align: left;
+  cursor: pointer;
+}
+.title-text {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2; /* 标题最多显示 2 行 */
+  line-clamp: 2;
+  overflow: hidden;
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 1.5;
+  overflow-wrap: anywhere; /* 没有空格的长英文串也能换行 */
+  word-break: break-word;
+}
+.paper-card.expanded .title-text { display: block; -webkit-line-clamp: unset; line-clamp: none; }
+.tag-sample {
+  flex-shrink: 0;
+  margin-top: 11px;
+  padding: 1px 8px;
+  border-radius: 6px;
+  background: #EEF0F3;
+  color: var(--text-2);
+  font-size: 12px;
+  font-weight: 600;
+}
+.card-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 2px 14px;
+  color: var(--text-2);
+  font-size: 14px;
+}
+.card-meta > * { min-width: 0; overflow-wrap: anywhere; }
+.source-pill {
+  padding: 0 8px;
+  border: 1px solid var(--input-border);
+  border-radius: 6px;
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 600;
+}
+.meta-item.is-empty { color: #767C85; }
+.card-status {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 10px;
+  margin-top: 8px;
+}
+
+/* 状态下拉：颜色来自内联变量 --c（主色）、--tint（浅底）、--ink（文字色） */
+.status-wrap { position: relative; display: inline-flex; }
+.status-wrap::before {
+  content: "";
+  position: absolute;
+  left: 13px;
+  top: 50%;
+  width: 8px;
+  height: 8px;
+  margin-top: -4px;
+  border-radius: 50%;
+  background: var(--c);
+  pointer-events: none;
+}
+.status-wrap::after {
+  content: "";
+  position: absolute;
+  right: 13px;
+  top: 50%;
+  width: 6px;
+  height: 6px;
+  margin-top: -5px;
+  border-right: 2px solid var(--ink);
+  border-bottom: 2px solid var(--ink);
+  transform: rotate(45deg);
+  pointer-events: none;
+}
+.status-select {
+  -webkit-appearance: none;
+  appearance: none;
+  min-height: var(--tap);
+  padding: 0 32px 0 28px;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  background: var(--tint);
+  color: var(--ink);
+  font-size: 16px; /* 不小于 16px，避免 iPhone 自动放大 */
+  font-weight: 600;
+  cursor: pointer;
+}
+.status-select:hover { border-color: var(--c); }
+.status-select option { color: var(--text); background: #fff; font-weight: 400; }
+
+/* 等待天数徽章：0–30 天正常 / 31–90 天橙色 / 91 天起红色 / 已出结果不着色
+ * 橙、红两档用实色底 + 图标，和状态胶囊的浅色底明显区分开，一眼能看出哪篇该催 */
+.days {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 30px;
+  padding: 0 10px;
+  border-radius: 999px;
+  font-size: 14px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.days-icon { width: 14px; height: 14px; flex-shrink: 0; }
+.days-normal { background: #F0F2F5; color: #4B5563; }
+.days-warn { background: #F28C28; color: #2B1600; font-weight: 700; padding-left: 8px; }
+.days-danger { background: #D0312D; color: #FFFFFF; font-weight: 700; padding-left: 8px; }
+.days-final { background: transparent; color: var(--text-2); font-weight: 500; box-shadow: inset 0 0 0 1px var(--border); }
+.submitted { color: var(--text-2); font-size: 14px; white-space: nowrap; }
+.card-actions { display: flex; gap: 2px; margin-left: auto; }
+.row-break { display: none; }
+
+/* 展开后的详情 */
+.card-details {
+  margin: 8px 0 4px;
+  padding-top: 10px;
+  border-top: 1px dashed var(--border);
+  color: var(--text-2);
+  font-size: 14px;
+  cursor: auto;
+}
+.card-details dl { display: grid; grid-template-columns: auto 1fr; gap: 4px 12px; margin: 0; }
+.card-details dt { color: var(--text-2); }
+.card-details dd { margin: 0; min-width: 0; color: var(--text); }
+.note-text { white-space: pre-wrap; overflow-wrap: anywhere; }
+.note-empty { color: #767C85; }
+
+/* ========== 空列表 ========== */
+.empty-state { padding: 72px 16px; text-align: center; color: var(--text-2); }
+.empty-state svg { width: 64px; height: 64px; color: #B8BEC7; }
+.empty-title { margin: 12px 0 0; font-size: 16px; color: var(--text); }
+
+/* ========== 页脚 ========== */
+.footer {
+  padding: 16px 16px calc(16px + env(safe-area-inset-bottom));
+  color: var(--text-2);
+  font-size: 13px;
+  text-align: center;
+}
+
+/* ========== 弹窗 ========== */
+.dialog {
+  width: min(560px, calc(100vw - 32px));
+  max-height: calc(100vh - 48px);
+  padding: 0;
+  border: 0;
+  border-radius: 16px;
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: 0 20px 48px rgba(15, 23, 42, .22);
+}
+.dialog[open] { display: flex; flex-direction: column; }
+.dialog::backdrop { background: rgba(15, 23, 42, .45); }
+.dialog-form { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+.dialog-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 12px 10px 4px 20px;
+}
+.dialog-header h2 { margin: 0; font-size: 18px; }
+.dialog-body { flex: 1; min-height: 0; overflow-y: auto; padding: 0 20px 16px; }
+.dialog-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 12px 20px 16px;
+  border-top: 1px solid var(--border);
+}
+.dialog-small { width: min(420px, calc(100vw - 32px)); }
+.dialog-small .dialog-header { padding: 18px 20px 4px; }
+.dialog-small .dialog-footer { border-top: 0; padding-top: 4px; }
+.confirm-message { margin: 4px 0 0; color: var(--text-2); overflow-wrap: anywhere; }
+
+/* ========== 表单 ========== */
+.field { min-width: 0; margin: 14px 0 0; padding: 0; border: 0; }
+.field-label { display: block; margin: 0 0 6px; padding: 0; font-size: 14px; font-weight: 600; }
+.req { margin-left: 2px; color: var(--danger); }
+.input {
+  display: block;
+  width: 100%;
+  min-height: var(--tap);
+  padding: 9px 12px;
+  border: 1px solid var(--input-border);
+  border-radius: 8px;
+  background: #fff;
+  font-size: 16px; /* 不小于 16px，避免 iPhone 自动放大 */
+  line-height: 1.5;
+}
+.input:focus { outline: 2px solid var(--primary); outline-offset: -1px; border-color: var(--primary); }
+textarea.input { resize: vertical; }
+input[type="date"].input { -webkit-appearance: none; appearance: none; }
+input[type="date"].input::-webkit-date-and-time-value { text-align: left; }
+select.input { cursor: pointer; }
+.field.invalid .input { border-color: var(--danger); }
+.field-error { margin: 4px 0 0; color: var(--danger); font-size: 13px; }
+.field-error:empty { display: none; }
+.hint { margin: 4px 0 0; color: var(--text-2); font-size: 13px; }
+.field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 0 12px; }
+.radio-group { display: flex; flex-wrap: wrap; gap: 8px; }
+.radio-chip { position: relative; }
+.radio-chip input { position: absolute; inset: 0; margin: 0; opacity: 0; cursor: pointer; }
+.radio-chip span {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--tap);
+  padding: 0 14px;
+  border: 1px solid var(--input-border);
+  border-radius: 8px;
+  background: #fff;
+}
+.radio-chip input:checked + span {
+  border-color: var(--primary);
+  background: var(--primary-soft);
+  color: #1F4FA8;
+  font-weight: 600;
+}
+.radio-chip input:focus-visible + span { outline: 2px solid var(--primary); outline-offset: 2px; }
+.field.invalid .radio-chip span { border-color: var(--danger); }
+
+/* ========== 轻提示 ========== */
+.toast {
+  position: fixed;
+  left: 50%;
+  bottom: calc(24px + env(safe-area-inset-bottom));
+  z-index: 20;
+  max-width: calc(100vw - 32px);
+  padding: 10px 16px;
+  border-radius: 10px;
+  background: #1F2328;
+  color: #fff;
+  font-size: 14px;
+  box-shadow: 0 8px 24px rgba(15, 23, 42, .25);
+  transform: translateX(-50%);
+}
+
+/* ========== 顶部栏右侧：更多菜单 ========== */
+.topbar-actions { display: flex; align-items: center; gap: 8px; }
+.menu-wrap { position: relative; }
+.menu {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 6px);
+  z-index: 30;
+  min-width: 260px;
+  max-width: calc(100vw - 24px);
+  padding: 6px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: #fff;
+  box-shadow: 0 12px 32px rgba(15, 23, 42, .16);
+}
+.menu-item {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  min-height: var(--tap);
+  padding: 0 12px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  font-size: 15px;
+  text-align: left;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.menu-item:hover, .menu-item:focus-visible { background: #F1F3F6; outline: none; }
+.menu-item:disabled { color: #9AA0A8; background: transparent; cursor: not-allowed; }
+.menu-sub { margin-left: auto; padding-left: 16px; color: var(--text-2); font-size: 13px; }
+.menu-item:disabled .menu-sub { color: #9AA0A8; }
+.menu-sep { height: 1px; margin: 6px 4px; background: var(--border); }
+
+/* ========== 工具栏：搜索、筛选、排序 ========== */
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  margin-top: 12px;
+}
+.search-box { position: relative; flex: 1 1 220px; min-width: 0; }
+.search-box svg {
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  width: 18px;
+  height: 18px;
+  margin-top: -9px;
+  color: #767C85;
+  pointer-events: none;
+}
+.input.search-input { padding-left: 38px; padding-right: 44px; }
+.search-input::-webkit-search-cancel-button { -webkit-appearance: none; appearance: none; display: none; }
+.search-clear {
+  position: absolute;
+  right: 0;
+  top: 0;
+  width: var(--tap);
+  height: var(--tap);
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text-2);
+  font-size: 22px;
+  line-height: 1;
+  cursor: pointer;
+}
+.search-clear:hover { color: var(--text); }
+.filter-toggle { display: none; }
+.filter-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  height: 20px;
+  margin-left: 6px;
+  padding: 0 6px;
+  border-radius: 10px;
+  background: var(--primary);
+  color: #fff;
+  font-size: 12px;
+}
+.filter-panel { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; }
+.filter-item { display: flex; align-items: center; gap: 6px; color: var(--text-2); font-size: 14px; white-space: nowrap; }
+.filter-item .input { width: auto; min-width: 118px; color: var(--text); }
+.result-bar { display: flex; align-items: center; gap: 4px; margin-top: 6px; color: var(--text-2); font-size: 14px; }
+.btn-link {
+  min-height: var(--tap);
+  padding: 0 8px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--primary);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.btn-link:hover { background: var(--primary-soft); }
+.no-match { padding: 56px 16px; text-align: center; color: var(--text-2); }
+.no-match .btn { margin-top: 12px; }
+
+/* ========== 从备份恢复 ========== */
+.restore-summary { margin: 8px 0 0; font-size: 15px; }
+.choice {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin-top: 8px;
+  padding: 12px;
+  border: 1px solid var(--input-border);
+  border-radius: 10px;
+  cursor: pointer;
+}
+.choice:has(input:checked) { border-color: var(--primary); background: var(--primary-soft); }
+.choice input { flex-shrink: 0; width: 18px; height: 18px; margin: 3px 0 0; accent-color: var(--primary); }
+.choice-title { display: block; font-weight: 600; }
+.choice-desc { display: block; margin-top: 2px; color: var(--text-2); font-size: 13px; }
+
+/* ========== 管理状态 ========== */
+.section-title { margin: 18px 0 8px; font-size: 14px; font-weight: 700; }
+.chip-list { display: flex; flex-wrap: wrap; gap: 6px; }
+.status-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 100%;
+  padding: 3px 10px 3px 9px;
+  border-radius: 999px;
+  background: var(--tint);
+  color: var(--ink);
+  font-size: 14px;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+.status-chip::before {
+  content: "";
+  flex-shrink: 0;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--c);
+}
+.custom-list { margin: 0; padding: 0; list-style: none; border: 1px solid var(--border); border-radius: 10px; }
+.custom-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 10px;
+  padding: 4px 4px 4px 12px;
+  border-top: 1px solid var(--border);
+}
+.custom-row:first-child { border-top: 0; }
+.custom-empty { padding: 12px; color: var(--text-2); font-size: 14px; }
+.row-meta { color: var(--text-2); font-size: 13px; }
+.tag-final { padding: 1px 6px; border-radius: 6px; background: #EEF0F3; color: var(--text-2); font-size: 12px; font-weight: 600; }
+.row-actions { display: flex; margin-left: auto; }
+.inline-error { margin: 8px 0 0; color: var(--danger); font-size: 13px; }
+.inline-error:empty { display: none; }
+.inline-ok { margin: 8px 0 0; color: #2B730B; font-size: 13px; }
+.inline-ok:empty { display: none; }
+.list-actions { margin-top: 12px; }
+.status-editor {
+  margin-top: 12px;
+  padding: 2px 14px 14px;
+  border: 1px solid var(--primary);
+  border-radius: 12px;
+  background: #FAFCFF;
+}
+.swatches { display: flex; flex-wrap: wrap; gap: 6px; }
+.swatch { position: relative; }
+.swatch input { position: absolute; inset: 0; margin: 0; opacity: 0; cursor: pointer; }
+.swatch span {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--tap);
+  height: var(--tap);
+  border: 2px solid transparent;
+  border-radius: 10px;
+}
+.swatch span::before { content: ""; width: 24px; height: 24px; border-radius: 50%; background: var(--c); }
+.swatch input:checked + span { border-color: var(--text); }
+.swatch input:focus-visible + span { outline: 2px solid var(--primary); outline-offset: 2px; }
+.check-row { display: flex; align-items: center; gap: 10px; min-height: var(--tap); margin-top: 8px; cursor: pointer; }
+.check-row input { flex-shrink: 0; width: 18px; height: 18px; margin: 0; accent-color: var(--primary); }
+.editor-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 8px; }
+
+/* ========== 粘贴识别 ========== */
+.btn-paste { border-color: var(--primary); color: var(--primary); }
+.btn-paste:hover { background: var(--primary-soft); }
+.btn-short { display: none; }
+.beta-tag {
+  margin-left: 8px;
+  padding: 1px 7px;
+  border-radius: 6px;
+  background: #FDF3E7;
+  color: #7A3E06;
+  font-size: 12px;
+  font-weight: 600;
+  vertical-align: 2px;
+}
+.paste-lead { margin: 4px 0 0; }
+.paste-text {
+  margin-top: 6px;
+  min-height: 180px;
+  font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  font-size: 14px;
+  line-height: 1.45;
+}
+@media (max-width: 600px) { .paste-text { font-size: 16px; } }
+.privacy-note { margin: 10px 0 0; color: var(--text-2); font-size: 13px; }
+.paste-source { margin: 6px 0 0; font-weight: 600; }
+.paste-notices { margin: 8px 0 0; padding: 0; list-style: none; }
+.paste-notices li {
+  margin-top: 6px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  background: #F0F4FB;
+  color: #2A4A7F;
+  font-size: 14px;
+}
+.paste-rows { margin: 12px 0 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 10px; }
+.paste-row {
+  display: flex;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+}
+.paste-row.is-off { background: #FAFBFC; }
+.paste-row.is-off .row-main { opacity: .62; }
+.paste-row.is-skip { background: #FAFBFC; color: var(--text-2); }
+.paste-row.needs-choice { border-color: #E6A23C; }
+.row-check { display: flex; align-items: flex-start; padding-top: 3px; }
+.row-check input { width: 18px; height: 18px; margin: 0; accent-color: var(--primary); }
+.row-main { flex: 1; min-width: 0; }
+.row-head { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; }
+.row-phrase { font-weight: 600; overflow-wrap: anywhere; }
+.row-arrow { color: var(--text-2); }
+.row-stage { color: var(--text-2); font-size: 13px; }
+.row-title { margin: 4px 0 0; overflow-wrap: anywhere; }
+.row-title.is-empty { color: #767C85; }
+.row-meta2 { margin: 2px 0 0; color: var(--text-2); font-size: 13px; overflow-wrap: anywhere; }
+.row-choice { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.row-choice .radio-chip span { min-height: 38px; font-size: 14px; }
+.row-target { margin-top: 8px; }
+.row-target .field-label { font-size: 13px; margin-bottom: 4px; }
+.row-target select.input, .row-new input.input { min-height: 40px; padding: 6px 10px; }
+.match-hint { margin: 4px 0 0; font-size: 13px; color: var(--text-2); }
+.match-hint.is-warn { color: #8A4B08; }
+.row-new { margin-top: 8px; }
+.paste-unknown { margin-top: 12px; padding: 12px; border: 1px solid #F3D3AE; border-radius: 10px; background: #FFFBF5; }
+.paste-unknown p { margin: 0; }
+.alias-list { margin: 0; padding: 0; list-style: none; border: 1px solid var(--border); border-radius: 10px; }
+.alias-list .custom-row { justify-content: flex-start; }
+.alias-text { font-weight: 600; overflow-wrap: anywhere; }
+.detail-link { color: var(--primary); overflow-wrap: anywhere; }
+
+/* ========== 手机适配 ========== */
+@media (max-width: 600px) {
+  /* 添加/编辑、恢复、管理状态弹窗在手机上全屏显示 */
+  .dialog.dialog-full {
+    width: 100vw;
+    max-width: 100vw;
+    height: 100vh;
+    height: 100dvh;
+    max-height: none;
+    margin: 0;
+    border-radius: 0;
+  }
+  .dialog-full .dialog-footer { padding-bottom: calc(12px + env(safe-area-inset-bottom)); }
+  .dialog-full .dialog-footer .btn { flex: 1; }
+
+  /* 工具栏：搜索框和「筛选」按钮一行，筛选排序收进折叠面板 */
+  .toolbar { flex-wrap: wrap; }
+  .search-box { flex: 1 1 0; }
+  .filter-toggle { display: inline-flex; }
+  .filter-panel {
+    display: none;
+    flex-basis: 100%;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+    padding: 10px 12px;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    background: #fff;
+  }
+  .filter-panel.open { display: flex; }
+  .filter-item { justify-content: space-between; }
+  .filter-item .input { flex: 0 1 68%; min-width: 0; }
+  .topbar-actions .btn { padding: 0 12px; }
+  /* 手机上菜单改为贴着屏幕左右两边显示，避免超出屏幕 */
+  .menu {
+    position: fixed;
+    top: calc(env(safe-area-inset-top) + 60px);
+    left: 12px;
+    right: 12px;
+    min-width: 0;
+    max-width: none;
+  }
+}
+@media (max-width: 480px) {
+  .app-title { font-size: 16px; }
+  .topbar-inner { padding: 10px 12px; gap: 8px; }
+  .topbar-actions { gap: 6px; }
+  .topbar-actions .btn { padding: 0 10px; }
+  .btn-long { display: none; }
+  .btn-short { display: inline; }
+  .field-row { grid-template-columns: 1fr; }
+  .paper-card { padding: 8px 8px 8px 14px; }
+  /* 手机上：状态和天数一行，投稿日期和操作按钮固定另起一行 */
+  .card-status { row-gap: 2px; }
+  .row-break { display: block; flex-basis: 100%; height: 0; }
+}
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="topbar-inner">
+    <h1 class="app-title">投稿状态总览</h1>
+    <div class="topbar-actions">
+      <div class="menu-wrap">
+        <button id="btn-more" class="btn" type="button" aria-haspopup="menu" aria-expanded="false" aria-controls="more-menu">更多</button>
+        <div id="more-menu" class="menu" role="menu" aria-label="更多操作" hidden>
+          <button type="button" class="menu-item" role="menuitem" data-menu="export-xlsx">导出 Excel<span class="menu-sub" data-export-count></span></button>
+          <button type="button" class="menu-item" role="menuitem" data-menu="export-csv">导出 CSV<span class="menu-sub" data-export-count></span></button>
+          <div class="menu-sep" role="separator"></div>
+          <button type="button" class="menu-item" role="menuitem" data-menu="backup">备份全部数据<span class="menu-sub" id="backup-count"></span></button>
+          <button type="button" class="menu-item" role="menuitem" data-menu="restore">从备份恢复</button>
+          <div class="menu-sep" role="separator"></div>
+          <button type="button" class="menu-item" role="menuitem" data-menu="statuses">管理状态</button>
+        </div>
+      </div>
+      <button id="btn-paste" class="btn btn-paste" type="button" aria-label="粘贴识别（测试版）">粘贴识别</button>
+      <button id="btn-add" class="btn btn-primary" type="button" aria-label="添加论文"><span class="btn-long">＋ 添加论文</span><span class="btn-short">＋ 添加</span></button>
+    </div>
+  </div>
+</header>
+
+<main class="container">
+  <noscript><div class="banner"><p>请开启浏览器的 JavaScript 后再使用本工具。</p></div></noscript>
+  <div id="banners" role="alert"></div>
+
+  <!-- 工具栏：搜索、筛选、排序（有论文时才显示） -->
+  <div id="toolbar" class="toolbar" hidden>
+    <div class="search-box" role="search">
+      <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
+        <circle cx="8.5" cy="8.5" r="5.5"/><path d="M13 13l4 4"/>
+      </svg>
+      <input id="search" class="input search-input" type="search" placeholder="搜索标题/期刊/稿号" aria-label="搜索标题、期刊/会议名、稿号" autocomplete="off" enterkeyhint="search">
+      <button id="search-clear" class="search-clear" type="button" aria-label="清空搜索" hidden>×</button>
+    </div>
+    <button id="btn-filter" class="btn filter-toggle" type="button" aria-expanded="false" aria-controls="filter-panel">筛选<span id="filter-count" class="filter-count" hidden></span></button>
+    <div id="filter-panel" class="filter-panel">
+      <label class="filter-item">状态<select id="filter-status" class="input"></select></label>
+      <label class="filter-item">来源<select id="filter-source" class="input"></select></label>
+      <label class="filter-item">排序<select id="sort-select" class="input"></select></label>
+    </div>
+  </div>
+  <div id="result-bar" class="result-bar" hidden>
+    <span id="result-text"></span>
+    <button id="btn-clear-filters" class="btn-link" type="button">清除筛选</button>
+  </div>
+
+  <ul id="paper-list" class="paper-list" aria-label="论文列表"></ul>
+
+  <div id="no-match" class="no-match" hidden>
+    <p class="empty-title">没有符合条件的论文</p>
+    <button id="btn-clear-filters-2" class="btn" type="button">清除筛选</button>
+  </div>
+
+  <div id="empty-state" class="empty-state" hidden>
+    <svg viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linejoin="round" aria-hidden="true">
+      <path d="M16 6h22l12 12v40H16z"/>
+      <path d="M38 6v12h12"/>
+      <path d="M24 32h18M24 40h18M24 48h10" stroke-linecap="round"/>
+    </svg>
+    <p class="empty-title">还没有投稿记录，点右上角添加第一篇</p>
+    <p class="hint">也可以点「粘贴识别」，复制投稿系统页面的文字，自动识别状态并添加。</p>
+  </div>
+</main>
+
+<footer class="footer">数据只保存在本机浏览器，不会上传到任何服务器。</footer>
+
+<!-- 选择备份文件（隐藏，由「从备份恢复」触发） -->
+<input id="restore-file" type="file" accept=".json,application/json" hidden>
+
+<!-- 添加 / 编辑论文弹窗 -->
+<dialog id="paper-dialog" class="dialog dialog-full" aria-labelledby="paper-dialog-title">
+  <form id="paper-form" class="dialog-form" novalidate>
+    <div class="dialog-header">
+      <h2 id="paper-dialog-title">添加论文</h2>
+      <button type="button" class="btn-icon" data-close aria-label="关闭">×</button>
+    </div>
+    <div class="dialog-body">
+      <div class="field" data-field="title">
+        <label class="field-label" for="f-title">论文标题<span class="req" aria-hidden="true">*</span></label>
+        <textarea id="f-title" name="title" class="input" rows="2" required autocomplete="off"></textarea>
+        <p class="field-error" id="e-title"></p>
+      </div>
+
+      <fieldset class="field" data-field="sourceType">
+        <legend class="field-label">来源类型<span class="req" aria-hidden="true">*</span></legend>
+        <div class="radio-group" id="f-source-group"></div>
+        <p class="field-error" id="e-sourceType"></p>
+      </fieldset>
+
+      <div class="field" data-field="venue">
+        <label class="field-label" for="f-venue">期刊/会议名</label>
+        <input id="f-venue" name="venue" class="input" type="text" autocomplete="off" placeholder="选填，期刊或会议的全称">
+      </div>
+
+      <div class="field-row">
+        <div class="field" data-field="manuscriptId">
+          <label class="field-label" for="f-manuscriptId">稿号</label>
+          <input id="f-manuscriptId" name="manuscriptId" class="input" type="text" autocomplete="off" placeholder="选填，投稿系统里的稿件编号">
+        </div>
+        <div class="field" data-field="submittedDate">
+          <label class="field-label" for="f-submittedDate">投稿日期<span class="req" aria-hidden="true">*</span></label>
+          <input id="f-submittedDate" name="submittedDate" class="input" type="date" required>
+          <p class="field-error" id="e-submittedDate"></p>
+        </div>
+      </div>
+
+      <div class="field-row">
+        <div class="field" data-field="status">
+          <label class="field-label" for="f-status">当前状态<span class="req" aria-hidden="true">*</span></label>
+          <select id="f-status" name="status" class="input"></select>
+          <p class="field-error" id="e-status"></p>
+        </div>
+        <div class="field" data-field="statusChangedDate" id="changed-date-field" hidden>
+          <label class="field-label" for="f-statusChangedDate">出结果日期<span class="req" aria-hidden="true">*</span></label>
+          <input id="f-statusChangedDate" name="statusChangedDate" class="input" type="date">
+          <p class="field-error" id="e-statusChangedDate"></p>
+          <p class="hint">天数计算到这一天为止</p>
+        </div>
+      </div>
+
+      <div class="field" data-field="trackingUrl">
+        <label class="field-label" for="f-trackingUrl">追踪链接</label>
+        <input id="f-trackingUrl" name="trackingUrl" class="input" type="url" inputmode="url" autocomplete="off" placeholder="选填，例如投稿系统或追踪页的网址">
+        <p class="field-error" id="e-trackingUrl"></p>
+        <p class="hint">只保存这个网址，方便你以后点开；本工具不会打开或读取它。</p>
+      </div>
+
+      <div class="field" data-field="note">
+        <label class="field-label" for="f-note">备注</label>
+        <textarea id="f-note" name="note" class="input" rows="3" placeholder="选填，例如审稿意见要点、催稿记录"></textarea>
+      </div>
+    </div>
+    <div class="dialog-footer">
+      <button type="button" class="btn" data-close>取消</button>
+      <button type="submit" class="btn btn-primary">保存</button>
+    </div>
+  </form>
+</dialog>
+
+<!-- 从备份恢复 -->
+<dialog id="restore-dialog" class="dialog dialog-full" aria-labelledby="restore-title">
+  <form id="restore-form" class="dialog-form" novalidate>
+    <div class="dialog-header">
+      <h2 id="restore-title">从备份恢复</h2>
+      <button type="button" class="btn-icon" data-close aria-label="关闭">×</button>
+    </div>
+    <div class="dialog-body">
+      <p id="restore-file-info" class="hint"></p>
+      <p id="restore-summary" class="restore-summary"></p>
+      <fieldset class="field">
+        <legend class="field-label">恢复方式</legend>
+        <label class="choice">
+          <input type="radio" name="restoreMode" value="merge">
+          <span>
+            <span class="choice-title">合并</span>
+            <span class="choice-desc">把备份里的论文加进来，现有论文不会被删除；同一篇论文保留最后修改较新的版本。</span>
+          </span>
+        </label>
+        <label class="choice">
+          <input type="radio" name="restoreMode" value="overwrite">
+          <span>
+            <span class="choice-title">覆盖</span>
+            <span class="choice-desc" id="overwrite-desc"></span>
+          </span>
+        </label>
+      </fieldset>
+    </div>
+    <div class="dialog-footer">
+      <button type="button" class="btn" data-close>取消</button>
+      <button type="submit" class="btn btn-primary">开始恢复</button>
+    </div>
+  </form>
+</dialog>
+
+<!-- 管理状态 -->
+<dialog id="status-dialog" class="dialog dialog-full" aria-labelledby="status-dialog-title">
+  <div class="dialog-header">
+    <h2 id="status-dialog-title">管理状态</h2>
+    <button type="button" class="btn-icon" data-close aria-label="关闭">×</button>
+  </div>
+  <div class="dialog-body">
+    <h3 class="section-title">预置状态（不能修改）</h3>
+    <div id="preset-chips" class="chip-list"></div>
+
+    <h3 class="section-title">自定义状态</h3>
+    <ul id="custom-list" class="custom-list"></ul>
+    <p id="status-list-error" class="inline-error" role="alert"></p>
+    <p id="status-list-ok" class="inline-ok" role="status"></p>
+    <div class="list-actions">
+      <button id="btn-new-status" class="btn" type="button">＋ 新增状态</button>
+    </div>
+
+    <h3 class="section-title">粘贴识别记住的说法</h3>
+    <ul id="alias-list" class="alias-list"></ul>
+    <p class="hint">在「粘贴识别」里勾选「记住这个说法」后会出现在这里。删除后，下次粘贴就不会自动识别这个说法。</p>
+
+    <form id="status-editor" class="status-editor" novalidate hidden>
+      <h3 class="section-title" id="status-editor-title">新增状态</h3>
+      <div class="field" data-sfield="name">
+        <label class="field-label" for="s-name">名称<span class="req" aria-hidden="true">*</span></label>
+        <input id="s-name" class="input" type="text" autocomplete="off" placeholder="最多 10 个字，例如：等待编辑决定">
+        <p class="field-error" id="e-s-name"></p>
+      </div>
+      <fieldset class="field">
+        <legend class="field-label">颜色</legend>
+        <div id="s-swatches" class="swatches"></div>
+      </fieldset>
+      <label class="check-row">
+        <input id="s-final" type="checkbox">
+        <span>算作「已出结果」（等待天数停止累计）</span>
+      </label>
+      <p id="s-final-hint" class="hint" hidden></p>
+      <div class="editor-actions">
+        <button id="s-cancel" class="btn" type="button">取消</button>
+        <button class="btn btn-primary" type="submit">保存状态</button>
+      </div>
+    </form>
+  </div>
+  <div class="dialog-footer">
+    <button type="button" class="btn btn-primary" data-close>完成</button>
+  </div>
+</dialog>
+
+<!-- 粘贴识别（测试版） -->
+<dialog id="paste-dialog" class="dialog dialog-full" aria-labelledby="paste-title">
+  <div class="dialog-header">
+    <h2 id="paste-title">粘贴识别<span class="beta-tag">测试版</span></h2>
+    <button type="button" class="btn-icon" data-close aria-label="关闭">×</button>
+  </div>
+  <div class="dialog-body">
+    <div id="paste-step-input">
+      <p class="paste-lead">在投稿系统的稿件列表或状态页面全选、复制，粘贴到下面，工具会自动识别每篇稿件的状态。只复制一个状态词也可以。</p>
+      <p class="hint">支持 Elsevier（Editorial Manager、追踪页）、IEEE ScholarOne、IEEE Author Portal。</p>
+      <div class="field" data-field="pasteText">
+        <label class="field-label" for="paste-text">粘贴的文字</label>
+        <textarea id="paste-text" class="input paste-text" rows="8" spellcheck="false" autocomplete="off" autocapitalize="off" placeholder="例如：Awaiting AE Recommendation"></textarea>
+        <p class="field-error" id="e-pasteText" role="alert"></p>
+      </div>
+      <p class="privacy-note">识别只在本机进行。粘贴的文字不会保存，也不会发送到任何地方。</p>
+    </div>
+    <div id="paste-step-result" hidden>
+      <p id="paste-source" class="paste-source" tabindex="-1"></p>
+      <ul id="paste-notices" class="paste-notices"></ul>
+      <ul id="paste-rows" class="paste-rows" aria-label="识别结果"></ul>
+      <div id="paste-unknown" class="paste-unknown" hidden></div>
+      <p id="paste-apply-error" class="inline-error" role="alert"></p>
+    </div>
+  </div>
+  <div class="dialog-footer">
+    <button type="button" class="btn" id="paste-back" hidden>返回修改</button>
+    <button type="button" class="btn" id="paste-cancel" data-close>取消</button>
+    <button type="button" class="btn btn-primary" id="paste-go">开始识别</button>
+    <button type="button" class="btn btn-primary" id="paste-apply" hidden>应用</button>
+  </div>
+</dialog>
+
+<!-- 通用确认弹窗（不用浏览器自带的确认框，保证按钮文字是中文） -->
+<dialog id="confirm-dialog" class="dialog dialog-small" aria-labelledby="confirm-title" aria-describedby="confirm-message">
+  <div class="dialog-header"><h2 id="confirm-title"></h2></div>
+  <div class="dialog-body"><p id="confirm-message" class="confirm-message"></p></div>
+  <div class="dialog-footer">
+    <button type="button" class="btn" id="confirm-cancel">取消</button>
+    <button type="button" class="btn btn-danger" id="confirm-ok">确定</button>
+  </div>
+</dialog>
+
+<div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+
+<script>
+'use strict';
+(function () {
+  /* =====================================================================
+   * 一、常量
+   * ===================================================================== */
+  var STORAGE_KEY = 'pst.data.v1';   // localStorage 数据键名（版本号记在数据内部的 schemaVersion）
+  var PREFS_KEY = 'pst.prefs.v1';    // 界面偏好（目前只记排序方式）
+  var SCHEMA_VERSION = 3;            // 数据版本：1 = Stage 1；2 = 新增自定义状态；3 = 追踪链接、粘贴识别记住的说法
+  var MAX_ALIASES = 100;             // 记住的说法上限
+  var MAX_ALIAS_LEN = 80;            // 单个说法最长字符数
+  var APP_ID = 'paper-submission-tracker';
+  var MIN_DATE = '1990-01-01';       // 投稿日期下限，防止年份手误
+  var WARN_DAYS = 30;                // 超过 30 天标橙
+  var DANGER_DAYS = 90;              // 超过 90 天标红
+  var DAY_MS = 86400000;
+  var MAX_CUSTOM = 20;               // 自定义状态上限
+  var MAX_STATUS_NAME = 10;          // 状态名称最多 10 个字
+  var MAX_IMPORT_BYTES = 5 * 1024 * 1024;  // 备份文件大小上限 5 MB
+
+  // 预置投稿状态（全版本统一，颜色固定）。en 为英文名，只在程序内部使用
+  var PRESET_STATUSES = [
+    { id: 'submitted',      name: '已投稿', en: 'Submitted',      color: '#4A90D9', ink: '#235C9E', final: false },
+    { id: 'under_review',   name: '审稿中', en: 'Under Review',   color: '#E6A23C', ink: '#8A5A0F', final: false },
+    { id: 'major_revision', name: '大修',   en: 'Major Revision', color: '#E67E22', ink: '#9A4A08', final: false },
+    { id: 'minor_revision', name: '小修',   en: 'Minor Revision', color: '#7CB342', ink: '#44701A', final: false },
+    { id: 'accepted',       name: '已接收', en: 'Accepted',       color: '#52C41A', ink: '#2B730B', final: true },
+    { id: 'rejected',       name: '被拒',   en: 'Rejected',       color: '#EA6668', ink: '#B02A2D', final: true },
+    { id: 'withdrawn',      name: '已撤稿', en: 'Withdrawn',      color: '#909399', ink: '#55585E', final: true }
+  ];
+  var PRESET_IDS = {};
+  PRESET_STATUSES.forEach(function (s) { PRESET_IDS[s.id] = true; });
+
+  // 自定义状态可选的 8 种颜色（ink 为文字色，已校验在浅色底上的对比度 ≥ 4.5）
+  var PALETTE = [
+    { name: '紫色',   color: '#8B5CF6', ink: '#5B2FC9' },
+    { name: '靛蓝',   color: '#6366F1', ink: '#3F3FC0' },
+    { name: '青绿',   color: '#14B8A6', ink: '#0B6B61' },
+    { name: '天蓝',   color: '#0EA5E9', ink: '#076590' },
+    { name: '玫红',   color: '#EC4899', ink: '#A51D5E' },
+    { name: '棕色',   color: '#B7791F', ink: '#7A4E10' },
+    { name: '石板灰', color: '#64748B', ink: '#3E4A5B' },
+    { name: '橄榄绿', color: '#84A63A', ink: '#4A6118' }
+  ];
+
+  // 读到无法识别的状态时（例如状态已在其他页面被删除）使用的兜底样式
+  var UNKNOWN_STATUS = { id: '', name: '未知状态', color: '#909399', ink: '#55585E', final: false };
+
+  // 来源类型
+  var SOURCES = [
+    { id: 'elsevier',   name: 'Elsevier' },
+    { id: 'ieee',       name: 'IEEE' },
+    { id: 'conference', name: '会议' },
+    { id: 'other',      name: '其他期刊' }
+  ];
+
+  // 排序方式
+  var SORTS = [
+    { id: 'submitted_desc', name: '投稿日期：新→旧' },
+    { id: 'submitted_asc',  name: '投稿日期：旧→新' },
+    { id: 'wait_desc',      name: '等待天数：长→短' },
+    { id: 'wait_asc',       name: '等待天数：短→长' }
+  ];
+
+  // 导出表格的列
+  var EXPORT_HEADERS = ['标题', '来源', '期刊/会议', '稿号', '投稿日期', '当前状态', '等待天数', '是否已出结果', '状态变更日期', '备注'];
+
+  /* RECOGNIZER-START */
+  /* =====================================================================
+   * 粘贴识别引擎（纯函数，不碰页面、不联网、不保存原文）
+   * 支持：Elsevier Editorial Manager / 追踪页、IEEE ScholarOne、IEEE Author Portal
+   * 状态词依据见 docs/stage4-ieee-research.md
+   * ===================================================================== */
+  var PasteRecognizer = (function () {
+    var SYSTEMS = {
+      em: { id: 'em', name: 'Elsevier（Editorial Manager / 追踪页）', source: 'elsevier' },
+      s1: { id: 's1', name: 'IEEE ScholarOne', source: 'ieee' },
+      ap: { id: 'ap', name: 'IEEE Author Portal', source: 'ieee' }
+    };
+
+    // kind：status = 直接对应预置状态；revise = 分不清大修小修；reject_or_resubmit = 拒稿但可能允许重投；
+    //       rescinded = 原决定被撤回；draft = 尚未投稿；replaced = 已被新稿件取代
+    // group：1 编辑处理 / 2 审稿与等待决定 / 3 已有决定。同一篇里出现多个状态词时取 group 高的
+    // solo：true 表示这个词很常见（如 Accepted），只有独占一行/一格、或跟在「Status:」后面才算状态
+    function R(sys, pattern, kind, status, label, stage, group, solo) {
+      return { sys: sys, re: new RegExp(pattern, 'gi'), kind: kind, status: status || '', label: label,
+        stage: stage, group: group, solo: !!solo };
+    }
+    var S = 'status';
+    var RULES = [
+      // ---------- 通用 ----------
+      R('all', '\\bUnder\\s+Review\\b', S, 'under_review', 'Under Review', '审稿中', 2),
+      R('all', '\\bAwaiting\\s+Reviewer\\s+Scores?\\b', S, 'under_review', 'Awaiting Reviewer Scores', '等审稿人提交意见', 2),
+      R('all', '\\bManuscript\\s+Submitted\\b', S, 'submitted', 'Manuscript Submitted', '已提交，等待编辑部处理', 1),
+      R('all', '\\bMajor\\s+Revisions?(\\s+Required)?\\b', S, 'major_revision', 'Major Revision', '大修', 3),
+      R('all', '\\bMinor\\s+Revisions?(\\s+Required)?\\b', S, 'minor_revision', 'Minor Revision', '小修', 3),
+      R('all', '\\bWithdrawn\\b', S, 'withdrawn', 'Withdrawn', '已撤稿', 3, true),
+
+      // ---------- IEEE ScholarOne ----------
+      R('s1', '\\bAwaiting\\s+(Admin(istrative)?\\s+(Processing|Checklist)|EIC\\s+Assignment|Editor[- ]in[- ]Chief\\s+Assignment|AE\\s+Assignment|Associate\\s+Editor\\s+Assignment|Editor\\s+Assignment|ME\\s+Assignment|Managing\\s+Editor\\s+Assignment|EIC\\s+(Pre-?)?Screening|Initial\\s+Review|Editorial\\s+Screening)\\b',
+        S, 'submitted', '', '编辑部/编辑处理中（尚未送审）', 1),
+      R('s1', '\\bAwaiting\\s+Reviewer\\s+(Selection|Invitation|Assignment)\\b', S, 'under_review', '', '正在找审稿人', 2),
+      R('s1', '\\bAwaiting\\s+(AE|Associate\\s+Editor|Editor|ME|SE|Senior\\s+Editor)\\s+Recommendation\\b', S, 'under_review', '', '审稿意见已够，等编辑给建议', 2),
+      R('s1', '\\bAwaiting\\s+((EIC|EiC|Editor[- ]in[- ]Chief|Final)\\s+)?Decision(\\s+Approval)?\\b', S, 'under_review', '', '等待做出决定', 2),
+      R('s1', '\\bReject(ed)?\\s*[\\/&-]\\s*Resubmit[:\\s-]*Major\\s+Revisions?(\\s+Required)?(\\s+and\\s+External\\s+Reviews?\\s+Needed)?\\b',
+        S, 'major_revision', 'Reject/Resubmit: Major Revisions', '大修（按新稿重投）', 3),
+      R('s1', '\\bReject(ed)?\\s*(&|and|\\/|-)\\s*Resubmit(ted)?\\b', 'reject_or_resubmit', '', 'Reject & Resubmit', '拒稿但允许重投', 3),
+      R('s1', '\\bAccept(ed)?\\s+with\\s+Minor\\s+Revisions?\\b', S, 'minor_revision', 'Accept with Minor Revisions', '小修', 3),
+      R('s1', '\\bAccept(ed)?\\s+with\\s+Major\\s+Revisions?\\b', S, 'major_revision', 'Accept with Major Revisions', '大修', 3),
+      R('s1', '\\b(Reject(ed)?\\s+without\\s+Further\\s+Consideration|Immediate\\s+Reject(ion)?|Reject(ed)?\\s*[\\/-]\\s*Submit\\s+to\\s+Another\\s+Journal)\\b',
+        S, 'rejected', '', '被拒', 3),
+      R('s1', '\\bRevise\\s*(and|&)\\s*Resubmit\\b', 'revise', '', 'Revise and Resubmit', '需要修改', 3),
+      R('s1', '\\bAccept(ed)?\\b', S, 'accepted', 'Accept', '已接收', 3, true),
+      R('s1', '\\bReject(ed)?\\b', S, 'rejected', 'Reject', '被拒', 3, true),
+      R('s1', '\\bRevis(e|ion)\\b', 'revise', '', 'Revise', '需要修改', 3, true),
+
+      // ---------- IEEE Author Portal（官方 10 个状态） ----------
+      R('ap', '\\bAccepted\\s*\\(\\s*Final\\s+Files\\s*\\)', S, 'accepted', 'Accepted (Final Files)', '已接收（最终稿阶段）', 3),
+      R('ap', '\\bIn\\s+Revision\\b', 'revise', '', 'In Revision', '需要修改', 3),
+      R('ap', '\\bAccepted\\b', S, 'accepted', 'Accepted', '已接收', 3, true),
+      R('ap', '\\bRejected\\b', S, 'rejected', 'Rejected', '被拒', 3, true),
+      R('ap', '\\bRescinded\\b', 'rescinded', 'under_review', 'Rescinded', '编辑撤回了原决定，新决定待定', 3, true),
+      R('ap', '\\bReplaced\\b', 'replaced', '', 'Replaced', '已被新提交的稿件取代', 3, true),
+      R('ap', '\\bDraft\\b', 'draft', '', 'Draft', '尚未投稿的草稿', 3, true),
+      R('ap', '\\bSubmitted\\b', S, 'submitted', 'Submitted', '已投稿', 1, true),
+
+      // ---------- Elsevier ----------
+      R('em', '\\b(Submitted\\s+to\\s+Journal|With\\s+Editor|Editor\\s+Invited|Editor\\s+Assigned|With\\s+Journal\\s+Office|Pending\\s+Editor\\s+Assignment|Awaiting\\s+Editor\\s+Assignment|Sent\\s+Back\\s+to\\s+Author)\\b',
+        S, 'submitted', '', '编辑部/编辑处理中（尚未送审）', 1),
+      R('em', '\\b(Reviewers?\\s+Invited|Reviewers?\\s+Assigned|Required\\s+Reviews\\s+Complete[d]?|Decision\\s+in\\s+Process|Ready\\s+for\\s+Decision|Evaluating\\s+Recommendation)\\b',
+        S, 'under_review', '', '审稿中 / 等待决定', 2),
+      R('em', '\\bReviews?\\s+Completed?\\b', S, 'under_review', 'Reviews Completed', '审稿意见已返回', 2, true),
+      R('em', '\\b(Completed\\s*[-–:]?\\s*Accept(ed)?|Final\\s+Decision\\s*[:-]?\\s*Accept(ed)?)\\b', S, 'accepted', '', '已接收', 3),
+      R('em', '\\b(Completed\\s*[-–:]?\\s*Reject(ed)?|Final\\s+Decision\\s*[:-]?\\s*Reject(ed)?|Desk\\s+Reject(ed|ion)?)\\b', S, 'rejected', '', '被拒', 3),
+      R('em', '\\b(Revise\\s*(and|&)\\s*Resubmit|Revision\\s+Requested)\\b', 'revise', '', '', '需要修改', 3),
+      R('em', '\\bAccept(ed)?\\b', S, 'accepted', 'Accept', '已接收', 3, true),
+      R('em', '\\b(Reject(ed)?|Decline[d]?)\\b', S, 'rejected', 'Reject', '被拒', 3, true),
+      R('em', '\\bRevise\\b', 'revise', '', 'Revise', '需要修改', 3, true),
+      R('em', '\\b(Incomplete(\\s+Submission)?|Needs\\s+Approval\\s+by\\s+Author)\\b', 'draft', '', '', '投稿尚未完成', 3, true)
+    ];
+
+    // 页面上的导航、队列名、筛选项等：先整段抹掉，避免误识别
+    var NOISE = [
+      // ScholarOne 作者仪表盘
+      'Author\\s+Dashboard', 'Submitted\\s+Manuscripts', 'Manuscripts\\s+with\\s+Decisions', 'Revised\\s+Manuscripts\\s+in\\s+Draft',
+      'Unsubmitted\\s+and\\s+Manuscripts\\s+in\\s+Draft', 'Unsubmitted\\s+Manuscripts', 'Manuscripts\\s+I\\s+have\\s+Co-?Authored',
+      'Withdrawn\\s+Manuscripts', 'Invited\\s+Manuscripts', 'Manuscripts\\s+Accepted\\s+for\\s+First\\s+Look', 'Start\\s+New\\s+Submission',
+      'Create\\s+a\\s+Revision', 'Continue\\s+Submission', 'View\\s+Submission', 'View\\s+Decision\\s+Letter', 'Contact\\s+Journal',
+      'Legacy\\s+Instructions', '\\d+\\s+Most\\s+Recent\\s+E-?mails', 'a\\s+revision\\s+has\\s+been\\s+created',
+      // Author Portal
+      'My\\s+Submissions', 'Submission\\s+overview', 'View\\s+Accepted\\s+Submission\\s+Overview', 'Show\\s+versions',
+      'Review\\s+decision\\s+letter', 'Revise\\s+Submission', 'Request\\s+an\\s+extension', 'Open\\s+Submission\\s+Statuses',
+      'All\\s+Submission\\s+Statuses', 'Submission\\s+Status', 'Author\\s+Role', 'Resume\\s+submission', 'Start\\s+resubmission',
+      'Update\\s+submission', 'Editorial\\s+Contact', 'Complete\\s+my\\s+revision',
+      // Editorial Manager 队列
+      'Submissions\\s+Sent\\s+Back\\s+to\\s+Author', 'Incomplete\\s+Submissions(\\s+being\\s+Revised)?', 'Submissions\\s+Waiting\\s+for\\s+Author\'?s\\s+Approval',
+      'Submissions\\s+Being\\s+Processed', 'Submissions\\s+Needing\\s+Revision', 'Revisions\\s+Sent\\s+Back\\s+to\\s+Author',
+      'Revisions\\s+Waiting\\s+for\\s+Author\'?s\\s+Approval', 'Revisions\\s+Being\\s+Processed', 'Declined\\s+Revisions',
+      'Submissions\\s+with\\s+a\\s+Decision', 'Submissions\\s+with\\s+Production\\s+Completed', 'Submit\\s+New\\s+Manuscript',
+      'Action\\s+Links', 'Edit\\s+Submission', 'Send\\s+E-?mail', 'Track\\s+your\\s+(submission|accepted\\s+article)'
+    ].map(function (p) { return new RegExp('\\b' + p + '\\b(\\s*\\(\\d+\\))?', 'gi'); });
+
+    // 表头词：一整行都是这些词时整行忽略
+    var HEADER_WORDS = ['status', 'id', 'title', 'submitted', 'created', 'decisioned', 'manuscript id', 'manuscript number',
+      'manuscript title', 'article title', 'initial date submitted', 'status date', 'current status', 'date submitted',
+      'decision', 'actions', 'action', 'journal', 'manuscript type', 'article type', 'date', '稿号', '标题', '状态'];
+
+    // 来源特征词：分数高的判为该来源
+    var SIGNALS = {
+      s1: [/ScholarOne/i, /Manuscript\s*Central/i, /manuscriptcentral\.com/i, /Author\s+Dashboard/i, /Manuscripts\s+with\s+Decisions/i,
+        /Submitted\s+Manuscripts/i, /Awaiting\s+(Reviewer|AE|EIC|Admin)/i, /\b[A-Z][A-Za-z]{1,15}-\d{4}-\d{3,6}(\.R\d{1,2})?\b/],
+      ap: [/Author\s+Portal/i, /atyponrex/i, /My\s+Submissions/i, /Submission\s+overview/i, /Start\s+resubmission/i,
+        /Revise\s+Submission/i, /\bIn\s+Revision\b/, /Accepted\s*\(\s*Final\s+Files\s*\)/i, /^\s*(Rescinded|Replaced)\s*$/m],
+      em: [/Editorial\s+Manager/i, /editorialmanager\.com/i, /Elsevier/i, /Track\s+your\s+submission/i, /Submissions\s+Being\s+Processed/i,
+        /Revisions\s+Being\s+Processed/i, /Submissions\s+Needing\s+Revision/i, /\bWith\s+Editor\b/i, /Decision\s+in\s+Process/i,
+        /Required\s+Reviews\s+Complete/i, /\b[A-Z]{2,15}-D-\d{2}-\d{4,6}(R\d{1,2})?\b/]
+    };
+
+    var MONTHS = { jan: 1, feb: 2, mar: 3, apr: 4, may: 5, jun: 6, jul: 7, aug: 8, sep: 9, sept: 9, oct: 10, nov: 11, dec: 12 };
+    var MON = '(jan|feb|mar|apr|may|jun|jul|aug|sept?|oct|nov|dec)[a-z]*\\.?';
+    var DATE_RES = [
+      { re: new RegExp('(\\d{4})[-/.](\\d{1,2})[-/.](\\d{1,2})', 'i'), f: function (m) { return [m[1], m[2], m[3]]; } },
+      { re: new RegExp('(\\d{4})年(\\d{1,2})月(\\d{1,2})日', 'i'), f: function (m) { return [m[1], m[2], m[3]]; } },
+      { re: new RegExp('(\\d{1,2})[-\\s]' + MON + '[-\\s,]*(\\d{4})', 'i'), f: function (m) { return [m[3], MONTHS[m[2].toLowerCase().slice(0, 3)], m[1]]; } },
+      { re: new RegExp(MON + '\\s+(\\d{1,2}),?\\s+(\\d{4})', 'i'), f: function (m) { return [m[3], MONTHS[m[1].toLowerCase().slice(0, 3)], m[2]]; } },
+      // 01/03/2026：Editorial Manager 默认月/日/年；第一个数大于 12 时按日/月/年
+      { re: /(\d{1,2})\/(\d{1,2})\/(\d{4})/, f: function (m) { return +m[1] > 12 ? [m[3], m[2], m[1]] : [m[3], m[1], m[2]]; } }
+    ];
+    var ANY_DATE = new RegExp('(\\d{4}[-/.]\\d{1,2}[-/.]\\d{1,2}|\\d{4}年\\d{1,2}月\\d{1,2}日|\\d{1,2}[-\\s]' + MON +
+      '[-\\s,]*\\d{4}|' + MON + '\\s+\\d{1,2},?\\s+\\d{4}|\\d{1,2}\\/\\d{1,2}\\/\\d{4})', 'gi');
+
+    function pad(n) { n = +n; return (n < 10 ? '0' : '') + n; }
+    function validYMD(y, m, d) {
+      var t = new Date(Date.UTC(+y, +m - 1, +d));
+      return t.getUTCFullYear() === +y && t.getUTCMonth() === +m - 1 && t.getUTCDate() === +d;
+    }
+    function parseDate(s) {
+      for (var i = 0; i < DATE_RES.length; i++) {
+        var m = DATE_RES[i].re.exec(s);
+        if (!m) continue;
+        var p = DATE_RES[i].f(m);
+        if (p[1] && validYMD(p[0], p[1], p[2])) return p[0] + '-' + pad(p[1]) + '-' + pad(p[2]);
+      }
+      return '';
+    }
+    function isOnlyDate(s) {
+      ANY_DATE.lastIndex = 0;
+      var has = ANY_DATE.test(s);
+      ANY_DATE.lastIndex = 0;
+      if (!has) return false;
+      return s.replace(ANY_DATE, '').replace(/[\s()\[\],:：;；.\-–]/g, '').length === 0;
+    }
+
+    // 稿号：至少两段、其中一段不少于 4 位数字；R1 / .R1 为修改稿后缀
+    var ID_RE = /(^|[^A-Za-z0-9.])([A-Za-z][A-Za-z0-9]{0,19}(?:[-_][A-Za-z0-9]{1,12}){1,4}(?:\.R\d{1,2})?)(?![A-Za-z0-9-])/g;
+    function splitRevision(id) {
+      var m = /^(.*\d)\.?R(\d{1,2})$/i.exec(id);
+      return m ? { base: m[1].toUpperCase(), rev: +m[2] } : { base: id.toUpperCase(), rev: 0 };
+    }
+    function baseId(id) { return id ? splitRevision(String(id).trim()).base : ''; }
+    function looksLikeId(id) {
+      var parts = splitRevision(id).base.split(/[-_]/);
+      if (parts.length < 2) return false;
+      return parts.some(function (seg) { return /^\d{4,}$/.test(seg); }) && !/^\d{4}-\d{1,2}-\d{1,2}$/.test(id);
+    }
+
+    function escapeRe(s) { return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); }
+    function cleanCell(s) { return s.replace(/^[\s•·*>\-–|]+|[\s.。;；,，|]+$/g, ''); }
+    var LABEL_PREFIX = /^(current\s+|manuscript\s+|submission\s+)?(status|decision|state|状态|当前状态)\s*[:：]\s*/i;
+
+    function norm(s) { return s.toLowerCase().replace(/\s+/g, ' ').trim(); }
+
+    // 判断命中所在的「格」：labeled = 跟在 Status: 后面；solo = 独占一格；
+    // colon / date / nextdate = 其实是「Submitted: 日期」这类日期标签；'' = 夹在一句话里
+    function soloCheck(line, start, end, nextLine) {
+      var re = /\t| {3,}/g, cStart = 0, m, cells = [];
+      while ((m = re.exec(line))) { cells.push([cStart, m.index]); cStart = m.index + m[0].length; }
+      cells.push([cStart, line.length]);
+      for (var i = 0; i < cells.length; i++) {
+        if (start < cells[i][0] || end > cells[i][1]) continue;
+        var raw = line.slice(cells[i][0], cells[i][1]).trim();
+        var hit = norm(line.slice(start, end));
+        var labeled = LABEL_PREFIX.test(raw);
+        var rest = cleanCell(raw.replace(LABEL_PREFIX, ''));
+        var noDate = rest.replace(ANY_DATE, ' ').replace(/\(\s*\)|\[\s*\]/g, ' ');
+        ANY_DATE.lastIndex = 0;
+        var hadDate = norm(noDate) !== norm(rest);
+        var colon = /[:：]\s*$/.test(noDate.trim());
+        if (norm(cleanCell(noDate.replace(/[:：]\s*$/, ''))) !== hit) return '';
+        if (labeled) return 'labeled';
+        if (colon) return 'colon';
+        if (hadDate) return 'date';
+        if (nextLine && isOnlyDate(nextLine)) return 'nextdate';
+        return 'solo';
+      }
+      return '';
+    }
+
+    function detectSystem(text) {
+      var best = '', bestScore = 0, scores = {};
+      Object.keys(SIGNALS).forEach(function (k) {
+        var s = 0;
+        SIGNALS[k].forEach(function (re) { if (re.test(text)) s++; });
+        scores[k] = s;
+        if (s > bestScore) { best = k; bestScore = s; }
+      });
+      var tie = Object.keys(scores).filter(function (k) { return scores[k] === bestScore; }).length > 1;
+      return { system: bestScore > 0 && !tie ? best : '', scores: scores };
+    }
+
+    function buildAliasRules(aliases) {
+      return (aliases || []).filter(function (a) { return a && a.text && a.statusId; }).map(function (a) {
+        var words = a.text.trim().split(/\s+/);
+        var solo = words.length < 2 && a.text.length < 10;
+        var src = words.map(escapeRe).join('\\s+');
+        if (/^\w/.test(a.text)) src = '\\b' + src;
+        if (/\w$/.test(a.text)) src = src + '\\b';
+        var r = R('all', src, S, a.statusId, a.text.trim(), '你记住的说法', 2, solo);
+        r.alias = true;
+        return r;
+      });
+    }
+
+    function prepareLines(text) {
+      var lines = String(text || '').replace(/\r\n?/g, '\n').replace(/[\u00A0\u3000]/g, ' ').replace(/\u200B/g, '').split('\n');
+      var resubmitLines = {};
+      return {
+        resubmitLines: resubmitLines,
+        lines: lines.map(function (line, i) {
+          if (/Start\s+resubmission/i.test(line)) resubmitLines[i] = true;
+          NOISE.forEach(function (re) { re.lastIndex = 0; line = line.replace(re, function (m) { return new Array(m.length + 1).join(' '); }); });
+          var cells = line.split(/\t| {3,}/).map(function (c) { return c.trim().toLowerCase().replace(/[:：]$/, ''); })
+            .filter(function (c) { return c; });
+          var upper = line.trim() && line.trim() === line.trim().toUpperCase() && /[A-Z]/.test(line);
+          if (cells.length && cells.every(function (c) { return HEADER_WORDS.indexOf(c) >= 0; }) &&
+              (cells.length >= 2 || upper || /^(current status|status date|initial date submitted)$/.test(cells[0]))) {
+            return '';
+          }
+          return line;
+        })
+      };
+    }
+
+    function findHits(lines, rules) {
+      var hits = [];
+      lines.forEach(function (line, li) {
+        if (!line.trim()) return;
+        var found = [];
+        rules.forEach(function (rule, ri) {
+          rule.re.lastIndex = 0;
+          var m;
+          while ((m = rule.re.exec(line))) {
+            if (!m[0]) { rule.re.lastIndex++; continue; }
+            found.push({ line: li, start: m.index, end: m.index + m[0].length, text: m[0], rule: rule, order: ri });
+          }
+        });
+        // 重叠时保留最长、最具体的说法（例如 Reject/Resubmit: Major Revisions 优先于 Reject）
+        found.sort(function (a, b) {
+          return (b.end - b.start) - (a.end - a.start) || (b.rule.alias ? 1 : 0) - (a.rule.alias ? 1 : 0) || a.order - b.order;
+        });
+        var taken = [];
+        found.forEach(function (h) {
+          if (taken.some(function (t) { return h.start < t.end && t.start < h.end; })) return;
+          var nextLine = '';
+          for (var k = li + 1; k < lines.length && k < li + 3; k++) { if (lines[k].trim()) { nextLine = lines[k]; break; } }
+          var solo = soloCheck(line, h.start, h.end, nextLine);
+          h.labeled = solo === 'labeled';
+          if (h.rule.solo) {
+            if (!solo) return;
+            if (solo !== 'solo' && solo !== 'labeled') h.weak = true;
+          } else if (solo === 'colon') {
+            h.weak = true;
+          }
+          taken.push(h);
+        });
+        hits = hits.concat(taken);
+      });
+      hits.sort(function (a, b) { return a.line - b.line || a.start - b.start; });
+      return hits;
+    }
+
+    // 筛选下拉框：连续几行短文字里出现 5 个以上不同的状态词，整段当作筛选项忽略
+    function dropFilterNoise(lines, hits) {
+      var dropped = false;
+      var strong = hits.filter(function (h) { return !h.weak && lines[h.line].trim().length <= 40; });
+      var clusters = [];
+      strong.forEach(function (h) {
+        var last = clusters[clusters.length - 1];
+        if (last && h.line - last[last.length - 1].line <= 2) last.push(h); else clusters.push([h]);
+      });
+      clusters.forEach(function (c) {
+        var labels = {};
+        c.forEach(function (h) { labels[norm(h.text)] = true; });
+        if (Object.keys(labels).length >= 5) {
+          c.forEach(function (h) { h.noise = true; });
+          dropped = true;
+        }
+      });
+      return { hits: hits.filter(function (h) { return !h.noise; }), dropped: dropped };
+    }
+
+    function findIds(lines) {
+      var ids = [];
+      lines.forEach(function (line, li) {
+        ID_RE.lastIndex = 0;
+        var m;
+        while ((m = ID_RE.exec(line))) {
+          var id = m[2];
+          if (!looksLikeId(id)) continue;
+          var start = m.index + m[1].length;
+          var cells = line.split(/\t| {3,}/).map(function (c) { return cleanCell(c.replace(/^(manuscript\s+(id|number)|ref(erence)?(\s+no\.?)?|稿号|submission\s+id|article\s+id)\s*[:：#]?\s*/i, '')); });
+          var ownCell = cells.some(function (c) { return c === id; });
+          var labeled = /(manuscript\s+(id|number)|\bref\b|reference|稿号|submission\s+id|article\s+id)\s*[:：#]?\s*$/i.test(line.slice(0, start));
+          var segs = splitRevision(id).base.split(/[-_]/).length;
+          if (!ownCell && !labeled && segs < 3) continue;
+          ids.push({ line: li, id: id, base: splitRevision(id).base, rev: splitRevision(id).rev });
+        }
+      });
+      // 同一行出现多次同一个稿号只算一次
+      return ids.filter(function (x, i) { return !ids.slice(0, i).some(function (y) { return y.line === x.line && y.base === x.base; }); });
+    }
+
+    var UI_WORDS = /^(view|edit|delete|withdraw|contact|download|submit|continue|actions?|details|more|help|log ?out|home|dashboard|author|reviewer|editor|journal|decision letter|pdf|html|proof|corresponding author|co-?author)\b/i;
+    function titleOf(lines, from, to, skipLines) {
+      var best = '';
+      for (var i = Math.max(0, from); i < Math.min(lines.length, to); i++) {
+        lines[i].split(/\t| {3,}/).forEach(function (cell) {
+          var c = cleanCell(cell.replace(/^(title|manuscript\s+title|article\s+title|标题)\s*[:：]\s*/i, ''));
+          if (!c || skipLines[c.toLowerCase()]) return;
+          var lc = norm(c);
+          if ((skipLines.__hits || []).some(function (t) { return lc.indexOf(t) >= 0; })) return;
+          if (UI_WORDS.test(c) && c.length < 30) return;
+          if (/^(ADM|EIC|AE|ME|SE)\s*:/i.test(c)) return;
+          if (VENUE_RE.test(c)) return;
+          if (/^[A-Za-z][\w ]{0,40}[:：]/.test(c)) return;       // 「Journal: xxx」这类字段
+          ID_RE.lastIndex = 0;
+          var noId = c.replace(ID_RE, '$1');
+          var noDate = noId.replace(ANY_DATE, '');
+          ANY_DATE.lastIndex = 0;
+          var letters = (noDate.match(/[A-Za-z\u4e00-\u9fff]/g) || []).length;
+          var cjk = (noDate.match(/[\u4e00-\u9fff]/g) || []).length;
+          if (letters < (cjk ? 8 : 15) || letters < noDate.replace(/\s/g, '').length * 0.6) return;
+          if (c.length > best.length && c.length <= 400) best = c;
+        });
+      }
+      return best;
+    }
+
+    var VENUE_RE = /^IEEE\s+(Transactions|Journal|Access|Sensors|Open|Letters|Systems|Internet|Signal|Wireless|Network|Communications|Robotics|Photonics|Antennas|Geoscience|Computer|Software|Intelligent|Industrial|Power|Control)\b.{0,90}$/i;
+    function venueOf(lines, from, to) {
+      for (var i = Math.max(0, from); i < Math.min(lines.length, to); i++) {
+        var cells = lines[i].split(/\t| {3,}/);
+        for (var j = 0; j < cells.length; j++) {
+          var c = cleanCell(cells[j]);
+          if (VENUE_RE.test(c)) return c;
+        }
+      }
+      return '';
+    }
+
+    function datesIn(lines, from, to) {
+      var out = [];
+      for (var i = Math.max(0, from); i < Math.min(lines.length, to); i++) {
+        var m;
+        ANY_DATE.lastIndex = 0;
+        while ((m = ANY_DATE.exec(lines[i]))) {
+          var d = parseDate(m[0]);
+          if (d) out.push(d);
+        }
+      }
+      ANY_DATE.lastIndex = 0;
+      return out.sort();
+    }
+
+    function pickStatus(hits) {
+      if (!hits.length) return null;
+      var strong = hits.filter(function (h) { return !h.weak; });
+      var pool = strong.length ? strong : hits;
+      var labeled = pool.filter(function (h) { return h.labeled; });
+      if (labeled.length) pool = labeled;
+      var best = pool[0];
+      pool.forEach(function (h) { if (h.rule.group > best.rule.group) best = h; });
+      return best;
+    }
+
+    function recognize(text, options) {
+      options = options || {};
+      var detected = detectSystem(text);
+      var system = detected.system;
+      var prep = prepareLines(text);
+      var lines = prep.lines;
+      var aliasRules = buildAliasRules(options.aliases);
+      var rules = aliasRules.concat(RULES.filter(function (r) { return !system || r.sys === 'all' || r.sys === system; }));
+      var notices = [];
+
+      var filtered = dropFilterNoise(lines, findHits(lines, rules));
+      var hits = filtered.hits;
+      if (filtered.dropped) notices.push('已忽略页面上的状态筛选选项。');
+      var ids = findIds(lines);
+
+      var records = [];
+      var strongHits = hits.filter(function (h) { return !h.weak; });
+      var segs = [];
+      if (!ids.length && strongHits.length >= 2) {
+        // 没有稿号但有多个状态：按状态词分段，每段各找一个标题（例如 Author Portal 卡片不显示稿号时）
+        var starts0 = [];
+        strongHits.forEach(function (h) { if (!starts0.length || h.line > starts0[starts0.length - 1].line) starts0.push(h); });
+        var fwd = starts0.map(function (h, i) {
+          return { hit: h, from: h.line, to: i + 1 < starts0.length ? starts0[i + 1].line : lines.length };
+        });
+        var bwd = starts0.map(function (h, i) {
+          return { hit: h, from: i ? starts0[i - 1].line + 1 : 0, to: h.line + 1 };
+        });
+        var titled = function (list) { return list.filter(function (g) { return titleOf(lines, g.from, g.to, {}); }).length; };
+        var tf = titled(fwd), tb = titled(bwd);
+        if (Math.max(tf, tb) >= 2) segs = tf >= tb ? fwd : bwd;
+      }
+      if (segs.length) {
+        segs.forEach(function (g) {
+          records.push({ id: '', base: '', rev: 0, hit: pickStatus(hits.filter(function (h) { return h.line >= g.from && h.line < g.to; })) || g.hit,
+            from: g.from, to: g.to });
+        });
+      } else if (!ids.length) {
+        var st = pickStatus(hits);
+        if (st) {
+          records.push({ id: '', base: '', rev: 0, hit: st, from: 0, to: lines.length, multi: strongHits.length > 1 });
+        }
+      } else {
+        var L = ids.map(function (x) { return x.line; });
+        var inRange = function (a, b) { return hits.filter(function (h) { return h.line >= a && h.line < b; }); };
+        var after = 0, before = 0;
+        ids.forEach(function (x, i) {
+          if (inRange(L[i], i + 1 < L.length ? L[i + 1] : lines.length).some(function (h) { return !h.weak; })) after++;
+          if (inRange(i ? L[i - 1] + 1 : 0, L[i] + 1).some(function (h) { return !h.weak; })) before++;
+        });
+        var statusFirst = before > after;
+        var starts = ids.map(function (x, i) {
+          if (!statusFirst) return L[i];
+          var own = inRange(i ? L[i - 1] + 1 : 0, L[i] + 1).filter(function (h) { return !h.weak; });
+          return own.length ? Math.min(own[0].line, L[i]) : L[i];
+        });
+        ids.forEach(function (x, i) {
+          var from = starts[i];
+          var to = i + 1 < starts.length ? starts[i + 1] : lines.length;
+          if (!statusFirst) to = Math.min(to, i + 1 < L.length ? L[i + 1] : lines.length);
+          records.push({ id: x.id, base: x.base, rev: x.rev, hit: pickStatus(inRange(from, to)), from: from, to: to,
+            idLine: x.line });
+        });
+      }
+
+      // 同一篇的多个版本（原稿、R1、R2）只保留版本号最大的
+      var byBase = {};
+      records = records.filter(function (r) {
+        if (!r.base) return true;
+        var prev = byBase[r.base];
+        if (!prev) { byBase[r.base] = r; return true; }
+        if (r.rev > prev.rev || (r.rev === prev.rev && !prev.hit && r.hit)) {
+          prev.dropped = true;
+          byBase[r.base] = r;
+          return true;
+        }
+        return false;
+      }).filter(function (r) { return !r.dropped; });
+
+      var out = records.map(function (r, idx) {
+        var skip = { __hits: hits.filter(function (h) { return !h.rule.solo; }).map(function (h) { return norm(h.text); }) };
+        if (r.hit) skip[cleanCell(lines[r.hit.line]).toLowerCase()] = true;
+        var title = '';
+        if (r.idLine !== undefined) title = titleOf(lines, r.idLine, r.idLine + 1, skip);
+        if (!title) title = titleOf(lines, r.from, r.to, skip);
+        // 标题在稿号上方（例如 Elsevier 追踪页）：只对第一条向前找
+        if (!title && idx === 0 && r.from > 0) title = titleOf(lines, 0, r.from, skip);
+        // 期刊名：先看记录开头上方 3 行内（卡片布局期刊名在状态上方），再看记录开头到稿号所在行；
+        // ScholarOne 一个站点只对应一个期刊，页面顶部的期刊名适用于所有稿件
+        var headEnd = r.idLine !== undefined ? Math.max(r.idLine + 1, r.from + 1) : Math.min(r.to, r.from + 4);
+        var prevEnd = idx ? (records[idx - 1].hit ? records[idx - 1].hit.line + 1 : records[idx - 1].from + 1) : 0;
+        var venue = venueOf(lines, Math.max(prevEnd, r.from - 3), r.from) || venueOf(lines, r.from, headEnd) ||
+          (idx === 0 || system === 's1' ? venueOf(lines, 0, records[0].from) : '');
+        var dates = datesIn(lines, r.from, r.to);
+        var resubmit = false;
+        for (var i = r.from; i < r.to; i++) if (prep.resubmitLines[i]) resubmit = true;
+        var rule = r.hit ? r.hit.rule : null;
+        var kind = rule ? rule.kind : 'none';
+        if (kind === 'status' && rule.status === 'rejected' && resubmit) kind = 'reject_or_resubmit';
+        return {
+          manuscriptId: r.id,
+          baseId: r.base,
+          revision: r.rev,
+          title: title,
+          matchedText: r.hit ? r.hit.text.replace(/\s+/g, ' ') : '',
+          label: r.hit ? (rule.label && !rule.solo ? rule.label : r.hit.text.replace(/\s+/g, ' ')) : '',
+          venue: venue,
+          stage: rule ? rule.stage : '',
+          kind: kind,
+          statusId: rule ? rule.status : '',
+          viaAlias: !!(rule && rule.alias),
+          canResubmit: resubmit,
+          firstDate: dates[0] || '',
+          lastDate: dates[dates.length - 1] || '',
+          ambiguousSingle: !!r.multi
+        };
+      });
+
+      if (ids.length && out.some(function (r) { return r.kind === 'none'; })) {
+        notices.push('有稿件没有找到状态，已列出但不会修改。');
+      }
+      if (system === 'ap') {
+        notices.push('IEEE Author Portal 只提供粗略状态：「审稿中」涵盖从找审稿人到等待决定的全过程。');
+      }
+      return {
+        system: system,
+        systemName: system ? SYSTEMS[system].name : '',
+        sourceType: system ? SYSTEMS[system].source : '',
+        records: out,
+        notices: notices,
+        hasAnyHit: hits.length > 0
+      };
+    }
+
+    function normTitle(t) { return String(t || '').toLowerCase().replace(/[^a-z0-9\u4e00-\u9fff]+/g, ''); }
+    function dice(a, b) {
+      if (a.length < 2 || b.length < 2) return a === b ? 1 : 0;
+      var grams = {}, n = 0;
+      for (var i = 0; i < a.length - 1; i++) { var g = a.substr(i, 2); grams[g] = (grams[g] || 0) + 1; }
+      for (var j = 0; j < b.length - 1; j++) { var h = b.substr(j, 2); if (grams[h] > 0) { grams[h]--; n++; } }
+      return 2 * n / (a.length + b.length - 2);
+    }
+
+    // 找到这条识别结果对应的已有论文：稿号（忽略修改稿后缀）→ 标题 → 新增
+    function matchRecord(rec, papers) {
+      var list = papers || [];
+      if (rec.baseId) {
+        for (var i = 0; i < list.length; i++) {
+          if (list[i].manuscriptId && baseId(list[i].manuscriptId) === rec.baseId) return { type: 'id', paper: list[i] };
+        }
+      }
+      var nt = normTitle(rec.title);
+      if (nt.length >= 8) {
+        var best = null, bestScore = 0;
+        list.forEach(function (p) {
+          var pt = normTitle(p.title);
+          var score = pt === nt ? 1 : (pt.length >= 12 && nt.length >= 12 ? dice(pt, nt) : 0);
+          if (score > bestScore) { best = p; bestScore = score; }
+        });
+        if (best && bestScore >= 0.9) {
+          if (rec.baseId && best.manuscriptId && baseId(best.manuscriptId) !== rec.baseId) return { type: 'title_newid', paper: best };
+          return { type: 'title', paper: best };
+        }
+      }
+      return { type: 'new', paper: null };
+    }
+
+    return { recognize: recognize, matchRecord: matchRecord, baseId: baseId, parseDate: parseDate, detectSystem: detectSystem, SYSTEMS: SYSTEMS };
+  })();
+  /* RECOGNIZER-END */
+
+  /* =====================================================================
+   * 二、日期工具（全部按本机日历日计算，不做 UTC 换算）
+   * ===================================================================== */
+  function pad2(n) { return (n < 10 ? '0' : '') + n; }
+
+  // 本机当天日期 YYYY-MM-DD。不能用 toISOString()，否则北京时间早上 8 点前会算成昨天
+  function todayStr() {
+    var d = new Date();
+    return d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate());
+  }
+
+  // 解析 YYYY-MM-DD，返回该日历日对应的 UTC 毫秒数（只用来算天数差）；非法日期返回 null
+  function parseYMD(s) {
+    if (typeof s !== 'string') return null;
+    var m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(s);
+    if (!m) return null;
+    var y = +m[1], mo = +m[2], d = +m[3];
+    var t = Date.UTC(y, mo - 1, d);
+    var dt = new Date(t);
+    // 反查一遍，过滤 2026-02-30 这类不存在的日期
+    if (dt.getUTCFullYear() !== y || dt.getUTCMonth() !== mo - 1 || dt.getUTCDate() !== d) return null;
+    return t;
+  }
+
+  // 两个日期之间相差的天数（to - from）
+  function daysBetween(from, to) {
+    return Math.round((parseYMD(to) - parseYMD(from)) / DAY_MS);
+  }
+
+  // 日期加减天数
+  function addDays(ymd, n) {
+    var dt = new Date(parseYMD(ymd) + n * DAY_MS);
+    return dt.getUTCFullYear() + '-' + pad2(dt.getUTCMonth() + 1) + '-' + pad2(dt.getUTCDate());
+  }
+
+  // ISO 时间戳转成本机日期
+  function localDateOf(iso) {
+    var d = new Date(iso);
+    if (isNaN(d.getTime())) return '';
+    return d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate());
+  }
+
+  /* =====================================================================
+   * 三、通用小工具
+   * ===================================================================== */
+  function sourceName(id) {
+    for (var i = 0; i < SOURCES.length; i++) if (SOURCES[i].id === id) return SOURCES[i].name;
+    return '其他期刊';
+  }
+
+  function hexToRgba(hex, alpha) {
+    var h = hex.replace('#', '');
+    return 'rgba(' + parseInt(h.slice(0, 2), 16) + ',' + parseInt(h.slice(2, 4), 16) + ',' +
+      parseInt(h.slice(4, 6), 16) + ',' + alpha + ')';
+  }
+
+  // 生成唯一编号，保证同一天投稿的多篇不会互相覆盖
+  function newId() {
+    try {
+      if (window.crypto && typeof window.crypto.randomUUID === 'function') return window.crypto.randomUUID();
+    } catch (e) { /* 不支持时走下面的兜底 */ }
+    return 'p' + Date.now().toString(36) + Math.random().toString(36).slice(2, 10);
+  }
+
+  // 按字符截断（emoji 不会被截成乱码）
+  function truncate(text, max) {
+    var chars = Array.from(text || '');
+    return chars.length > max ? chars.slice(0, max).join('') + '…' : chars.join('');
+  }
+
+  // 统一大小写和全角半角，用于搜索和判断重名
+  function normalizeText(s) {
+    var str = String(s == null ? '' : s);
+    try { str = str.normalize('NFKC'); } catch (e) { /* 老浏览器不支持时直接用原文 */ }
+    return str.toLowerCase();
+  }
+  function nameKey(s) { return normalizeText(s).trim(); }
+
+  // 创建元素。文字一律用 textContent 写入，用户输入的 <script>、引号等只会原样显示
+  function el(tag, className, text) {
+    var node = document.createElement(tag);
+    if (className) node.className = className;
+    if (text != null) node.textContent = text;
+    return node;
+  }
+
+  function setStatusVars(node, st) {
+    node.style.setProperty('--c', st.color);
+    node.style.setProperty('--ink', st.ink);
+    node.style.setProperty('--tint', hexToRgba(st.color, 0.14));
+  }
+
+  /* =====================================================================
+   * 四、状态（预置 + 自定义）
+   * ===================================================================== */
+  var statusIndex = {};   // 状态编号 → 状态
+
+  function paletteOf(color) {
+    var c = String(color || '').toUpperCase();
+    for (var i = 0; i < PALETTE.length; i++) if (PALETTE[i].color === c) return PALETTE[i];
+    return null;
+  }
+
+  function customStatuses() {
+    return (state.data && state.data.customStatuses) || [];
+  }
+
+  // 自定义状态补上显示用的文字色
+  function decorateCustom(s) {
+    var pal = paletteOf(s.color) || PALETTE[6];
+    return { id: s.id, name: s.name, color: pal.color, ink: pal.ink, final: !!s.final, custom: true };
+  }
+
+  function rebuildStatusIndex() {
+    statusIndex = {};
+    PRESET_STATUSES.forEach(function (s) { statusIndex[s.id] = s; });
+    customStatuses().forEach(function (s) { statusIndex[s.id] = decorateCustom(s); });
+  }
+
+  function getStatus(id) { return statusIndex[id] || UNKNOWN_STATUS; }
+
+  function statusLabel(id) {
+    return statusIndex[id] ? statusIndex[id].name : '未知状态（' + id + '）';
+  }
+
+  // 整理自定义状态列表：去掉编号或名称冲突的、颜色不在调色板里的改成默认色
+  function normalizeCustomStatuses(list) {
+    var out = [];
+    var ids = {};
+    var names = {};
+    PRESET_STATUSES.forEach(function (s) { ids[s.id] = true; names[nameKey(s.name)] = true; });
+    names[nameKey(UNKNOWN_STATUS.name)] = true;
+    (Array.isArray(list) ? list : []).forEach(function (s) {
+      if (!s || typeof s !== 'object' || out.length >= MAX_CUSTOM) return;
+      var id = typeof s.id === 'string' ? s.id : '';
+      var name = typeof s.name === 'string' ? s.name.trim() : '';
+      if (!id || ids[id] || !name || names[nameKey(name)]) return;
+      var pal = paletteOf(s.color);
+      out.push({ id: id, name: name, color: pal ? pal.color : PALETTE[0].color, final: s.final === true });
+      ids[id] = true;
+      names[nameKey(name)] = true;
+    });
+    return out;
+  }
+
+  // 填充状态下拉：预置状态在前，自定义状态放进「自定义状态」分组
+  function fillStatusOptions(select, current, withAll) {
+    select.textContent = '';
+    if (withAll) {
+      var all = el('option', null, '全部状态');
+      all.value = '';
+      select.append(all);
+    }
+    PRESET_STATUSES.forEach(function (s) {
+      var opt = el('option', null, s.name);
+      opt.value = s.id;
+      select.append(opt);
+    });
+    var customs = customStatuses();
+    if (customs.length) {
+      var group = document.createElement('optgroup');
+      group.label = '自定义状态';
+      customs.forEach(function (s) {
+        var opt = el('option', null, s.name);
+        opt.value = s.id;
+        group.append(opt);
+      });
+      select.append(group);
+    }
+    // 无法识别的状态也保留一个选项，避免被悄悄改掉
+    if (!withAll && current && !statusIndex[current]) {
+      var unknown = el('option', null, '未知状态（' + current + '）');
+      unknown.value = current;
+      select.append(unknown);
+    }
+    select.value = withAll ? (current || '') : (current || 'submitted');
+  }
+
+  /* =====================================================================
+   * 五、等待天数
+   * ===================================================================== */
+  // 返回 { level, days, text, tip }；level 为 normal / warn / danger / final；days 可能为 null
+  function getWaitInfo(p, today) {
+    if (parseYMD(p.submittedDate) === null) {
+      return { level: 'warn', days: null, text: '投稿日期无效', tip: '请点「编辑」重新选择投稿日期' };
+    }
+    var st = getStatus(p.status);
+    if (st.final) {
+      // 已出结果：天数停在出结果那天
+      var end = parseYMD(p.statusChangedDate) !== null ? p.statusChangedDate : today;
+      var total = Math.max(0, daysBetween(p.submittedDate, end));
+      return { level: 'final', days: total, text: '历时 ' + total + ' 天', tip: '从投稿到出结果共 ' + total + ' 天' };
+    }
+    var days = daysBetween(p.submittedDate, today);
+    if (days < 0) {
+      return { level: 'warn', days: days, text: '投稿日期晚于今天', tip: '请检查投稿日期，或电脑的系统日期是否正确' };
+    }
+    if (days > DANGER_DAYS) {
+      return { level: 'danger', days: days, text: '已等待 ' + days + ' 天', tip: '已超过 90 天，可以考虑发邮件询问进度' };
+    }
+    if (days > WARN_DAYS) {
+      return { level: 'warn', days: days, text: '已等待 ' + days + ' 天', tip: '等待时间偏长（31–90 天）' };
+    }
+    return { level: 'normal', days: days, text: '已等待 ' + days + ' 天', tip: '等待时间正常（30 天以内）' };
+  }
+
+  /* =====================================================================
+   * 六、本地存储
+   * ===================================================================== */
+  var store = {
+    available: false,
+
+    // 检测浏览器是否允许写入（无痕模式、禁用网站数据时可能不允许）
+    init: function () {
+      try {
+        var k = 'pst.__probe__';
+        window.localStorage.setItem(k, '1');
+        window.localStorage.removeItem(k);
+        this.available = true;
+      } catch (e) {
+        this.available = false;
+      }
+    },
+
+    readRaw: function () {
+      try { return window.localStorage.getItem(STORAGE_KEY); } catch (e) { return null; }
+    },
+
+    write: function (data) {
+      try {
+        window.localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+        return true;
+      } catch (e) {
+        return false;
+      }
+    },
+
+    // 把读不懂的原始数据另存一份，返回备份键名；失败返回 null
+    backup: function (raw) {
+      var key = STORAGE_KEY + '.corrupt.' + Date.now();
+      try {
+        window.localStorage.setItem(key, raw);
+        return key;
+      } catch (e) {
+        return null;
+      }
+    }
+  };
+
+  // 界面偏好（只是方便，读写失败不影响使用）
+  var prefs = {
+    load: function () {
+      try {
+        var p = JSON.parse(window.localStorage.getItem(PREFS_KEY) || '{}');
+        return p && typeof p === 'object' ? p : {};
+      } catch (e) {
+        return {};
+      }
+    },
+    save: function (p) {
+      try { window.localStorage.setItem(PREFS_KEY, JSON.stringify(p)); } catch (e) { /* 忽略 */ }
+    }
+  };
+
+  // 第一次打开时放入的 2 条虚构示例（一条标红、一条标橙）
+  function makeSamples() {
+    var today = todayStr();
+    var now = new Date().toISOString();
+    return [
+      {
+        id: newId(),
+        title: '基于多源遥感数据的城市热岛效应时空演变分析',
+        sourceType: 'elsevier',
+        venue: '示例期刊 A',
+        manuscriptId: 'DEMO-2026-001',
+        submittedDate: addDays(today, -95),
+        status: 'under_review',
+        statusChangedDate: addDays(today, -80),
+        note: '这是一条示例数据，可以直接删除。\n它已经等待超过 90 天，所以天数标成了红色，提醒你该发邮件问问进度了。',
+        isSample: true,
+        createdAt: now,
+        updatedAt: now
+      },
+      {
+        id: newId(),
+        title: '面向边缘设备的轻量化目标检测网络设计',
+        sourceType: 'ieee',
+        venue: '示例期刊 B',
+        manuscriptId: '',
+        submittedDate: addDays(today, -45),
+        status: 'major_revision',
+        statusChangedDate: addDays(today, -5),
+        note: '这是一条示例数据，可以直接删除。\n等待 31–90 天时天数标成橙色；稿号没填时会显示「未填写」。',
+        isSample: true,
+        createdAt: now,
+        updatedAt: now
+      }
+    ];
+  }
+
+  // 整理一条记录：补齐缺失字段、修正类型；保留未知字段，避免丢掉以后版本新增的数据
+  function normalizePaper(p) {
+    if (!p || typeof p !== 'object' || Array.isArray(p)) return null;
+    function str(v) { return typeof v === 'string' ? v : (v == null ? '' : String(v)); }
+    var now = new Date().toISOString();
+    var out = Object.assign({}, p);
+    out.id = str(p.id);
+    out.title = str(p.title);
+    out.sourceType = SOURCES.some(function (s) { return s.id === p.sourceType; }) ? p.sourceType : 'other';
+    out.venue = str(p.venue);
+    out.manuscriptId = str(p.manuscriptId);
+    out.submittedDate = str(p.submittedDate);
+    out.status = str(p.status) || 'submitted';
+    out.statusChangedDate = str(p.statusChangedDate);
+    out.note = str(p.note);
+    out.trackingUrl = str(p.trackingUrl);
+    if (p.lastRecognized && typeof p.lastRecognized === 'object' && typeof p.lastRecognized.label === 'string') {
+      out.lastRecognized = {
+        label: p.lastRecognized.label.slice(0, MAX_ALIAS_LEN),
+        system: str(p.lastRecognized.system).slice(0, 60),
+        date: str(p.lastRecognized.date)
+      };
+    } else {
+      delete out.lastRecognized;
+    }
+    out.isSample = p.isSample === true;
+    out.createdAt = str(p.createdAt) || now;
+    out.updatedAt = str(p.updatedAt) || now;
+    return out;
+  }
+
+  // 整理论文列表：去掉无效条目，修复重复或缺失的编号
+  function normalizePapers(list) {
+    var seen = {};
+    var papers = [];
+    (Array.isArray(list) ? list : []).forEach(function (item) {
+      var p = normalizePaper(item);
+      if (!p) return;
+      if (!p.id || seen[p.id]) p.id = newId();
+      seen[p.id] = true;
+      papers.push(p);
+    });
+    return papers;
+  }
+
+  function emptyData() {
+    return { schemaVersion: SCHEMA_VERSION, seeded: true, papers: [], customStatuses: [], pasteAliases: [] };
+  }
+
+  // 整理「记住的说法」：去掉空的、过长的、重复的（不区分大小写）
+  function aliasKey(text) { return String(text || '').toLowerCase().replace(/\s+/g, ' ').trim(); }
+  function normalizeAliases(list) {
+    var out = [];
+    var seen = {};
+    (Array.isArray(list) ? list : []).forEach(function (a) {
+      if (!a || typeof a !== 'object' || out.length >= MAX_ALIASES) return;
+      var text = typeof a.text === 'string' ? a.text.replace(/\s+/g, ' ').trim() : '';
+      var statusId = typeof a.statusId === 'string' ? a.statusId : '';
+      if (!text || text.length > MAX_ALIAS_LEN || !statusId || seen[aliasKey(text)]) return;
+      seen[aliasKey(text)] = true;
+      out.push({ text: text, statusId: statusId });
+    });
+    return out;
+  }
+
+  // 从 localStorage 读取最新数据（版本 1 的数据会自动升级到版本 2）
+  function loadData() {
+    if (!store.available) return state.data || emptyData();
+
+    var raw = store.readRaw();
+    if (raw === null) {
+      // 第一次打开：放入示例数据
+      var fresh = emptyData();
+      fresh.papers = makeSamples();
+      if (!store.write(fresh)) showStorageUnavailable();
+      return fresh;
+    }
+
+    var parsed;
+    try { parsed = JSON.parse(raw); } catch (e) { parsed = null; }
+    if (!parsed || typeof parsed !== 'object' || !Array.isArray(parsed.papers)) {
+      return handleCorrupt(raw);
+    }
+
+    var data = Object.assign({}, parsed);
+    data.schemaVersion = Math.max(SCHEMA_VERSION, typeof parsed.schemaVersion === 'number' ? parsed.schemaVersion : 0);
+    data.seeded = true;
+    data.papers = normalizePapers(parsed.papers);
+    data.customStatuses = normalizeCustomStatuses(parsed.customStatuses);
+    data.pasteAliases = normalizeAliases(parsed.pasteAliases);
+    return data;
+  }
+
+  // 数据损坏：先另存原始内容，再从空列表开始；另存失败则不覆盖，只在内存里运行
+  function handleCorrupt(raw) {
+    var backupKey = store.backup(raw);
+    var data = emptyData();
+    if (backupKey && store.write(data)) {
+      // 备份键名写进控制台，方便以后排查或手动恢复
+      console.warn('投稿状态总览：无法读取的原始数据已备份到 localStorage 键「' + backupKey + '」');
+      showBanner('corrupt', '本地数据无法读取，原始内容已另存为备份（不会删除），列表从空开始。');
+    } else {
+      store.available = false;
+      showBanner('corrupt', '本地数据无法读取，且无法另存备份。为避免覆盖原数据，本次打开期间的修改不会保存。');
+    }
+    return data;
+  }
+
+  // 修改数据的唯一入口：先读最新数据（避免覆盖其他标签页的修改），再修改、保存、刷新列表
+  function commit(mutator) {
+    var data = loadData();
+    var result = mutator(data);
+    if (result === false) {           // 修改函数表示无需保存
+      state.data = data;
+      render();
+      return { ok: true, changed: false };
+    }
+    if (store.available && !store.write(data)) {
+      // 保存失败：界面回到已保存的状态，避免显示没存下来的内容
+      state.data = loadData();
+      render();
+      showBanner('save-failed', '保存失败：浏览器存储空间已满或被禁止写入，刚才的修改没有生效。');
+      return { ok: false, changed: false };
+    }
+    state.data = data;
+    render();
+    return { ok: true, changed: true };
+  }
+
+  /* =====================================================================
+   * 七、页面状态与元素
+   * ===================================================================== */
+  var state = {
+    data: null,
+    visible: [],           // 当前筛选、排序后显示的论文
+    filters: { q: '', status: '', source: '' },
+    sort: 'submitted_desc',
+    expanded: {},          // 已展开的卡片编号
+    renderedDay: '',       // 上次渲染时的日期，跨天后自动重算天数
+    editingId: null,       // 正在编辑的论文编号，null 表示新增
+    editingOriginal: null, // 编辑前的论文
+    editingStatusId: null, // 正在编辑的自定义状态编号
+    pendingRestore: null   // 已读取、等待确认的备份
+  };
+
+  function $(id) { return document.getElementById(id); }
+
+  var els = {
+    list: $('paper-list'),
+    empty: $('empty-state'),
+    noMatch: $('no-match'),
+    banners: $('banners'),
+    toast: $('toast'),
+    addBtn: $('btn-add'),
+    // 工具栏
+    toolbar: $('toolbar'),
+    search: $('search'),
+    searchClear: $('search-clear'),
+    filterBtn: $('btn-filter'),
+    filterCount: $('filter-count'),
+    filterPanel: $('filter-panel'),
+    filterStatus: $('filter-status'),
+    filterSource: $('filter-source'),
+    sortSelect: $('sort-select'),
+    resultBar: $('result-bar'),
+    resultText: $('result-text'),
+    // 更多菜单
+    moreBtn: $('btn-more'),
+    menu: $('more-menu'),
+    backupCount: $('backup-count'),
+    restoreFile: $('restore-file'),
+    // 添加 / 编辑
+    dialog: $('paper-dialog'),
+    dialogTitle: $('paper-dialog-title'),
+    form: $('paper-form'),
+    title: $('f-title'),
+    sourceGroup: $('f-source-group'),
+    venue: $('f-venue'),
+    manuscriptId: $('f-manuscriptId'),
+    submittedDate: $('f-submittedDate'),
+    status: $('f-status'),
+    changedField: $('changed-date-field'),
+    changedDate: $('f-statusChangedDate'),
+    note: $('f-note'),
+    trackingUrl: $('f-trackingUrl'),
+    // 粘贴识别
+    pasteBtn: $('btn-paste'),
+    pasteDialog: $('paste-dialog'),
+    pasteStepInput: $('paste-step-input'),
+    pasteStepResult: $('paste-step-result'),
+    pasteText: $('paste-text'),
+    pasteSource: $('paste-source'),
+    pasteNotices: $('paste-notices'),
+    pasteRows: $('paste-rows'),
+    pasteUnknown: $('paste-unknown'),
+    pasteApplyError: $('paste-apply-error'),
+    pasteBack: $('paste-back'),
+    pasteCancel: $('paste-cancel'),
+    pasteGo: $('paste-go'),
+    pasteApply: $('paste-apply'),
+    aliasList: $('alias-list'),
+    // 恢复
+    restoreDialog: $('restore-dialog'),
+    restoreForm: $('restore-form'),
+    restoreFileInfo: $('restore-file-info'),
+    restoreSummary: $('restore-summary'),
+    overwriteDesc: $('overwrite-desc'),
+    // 管理状态
+    statusDialog: $('status-dialog'),
+    presetChips: $('preset-chips'),
+    customList: $('custom-list'),
+    statusListError: $('status-list-error'),
+    statusListOk: $('status-list-ok'),
+    newStatusBtn: $('btn-new-status'),
+    statusEditor: $('status-editor'),
+    statusEditorTitle: $('status-editor-title'),
+    sName: $('s-name'),
+    sSwatches: $('s-swatches'),
+    sFinal: $('s-final'),
+    sFinalHint: $('s-final-hint'),
+    sCancel: $('s-cancel'),
+    // 确认
+    confirm: $('confirm-dialog'),
+    confirmTitle: $('confirm-title'),
+    confirmMsg: $('confirm-message'),
+    confirmOk: $('confirm-ok'),
+    confirmCancel: $('confirm-cancel')
+  };
+
+  var ALL_DIALOGS = [els.dialog, els.restoreDialog, els.statusDialog, els.pasteDialog, els.confirm];
+
+  /* =====================================================================
+   * 八、提示条与轻提示
+   * ===================================================================== */
+  var bannerNodes = {};
+
+  function showBanner(key, text) {
+    var node = bannerNodes[key];
+    if (!node) {
+      node = el('div', 'banner');
+      var p = el('p');
+      var close = el('button', 'btn btn-text', '知道了');
+      close.type = 'button';
+      close.addEventListener('click', function () {
+        node.remove();
+        delete bannerNodes[key];
+      });
+      node.append(p, close);
+      els.banners.append(node);
+      bannerNodes[key] = node;
+    }
+    node.querySelector('p').textContent = text;
+  }
+
+  function hideBanner(key) {
+    if (!bannerNodes[key]) return;
+    bannerNodes[key].remove();
+    delete bannerNodes[key];
+  }
+
+  function showStorageUnavailable() {
+    showBanner('storage', '当前浏览器不允许保存数据（可能开启了无痕/隐私模式，或禁用了网站数据），录入的内容在刷新或关闭页面后会丢失。');
+  }
+
+  var toastTimer = null;
+  function showToast(text) {
+    els.toast.textContent = text;
+    els.toast.hidden = false;
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(function () { els.toast.hidden = true; }, 2600);
+  }
+
+  /* =====================================================================
+   * 九、搜索、筛选、排序
+   * ===================================================================== */
+  var searchCache = new WeakMap();   // 论文对象 → 用于搜索的文字
+
+  function searchTextOf(p) {
+    var t = searchCache.get(p);
+    if (t === undefined) {
+      t = normalizeText(p.title + '\n' + p.venue + '\n' + p.manuscriptId);
+      searchCache.set(p, t);
+    }
+    return t;
+  }
+
+  function searchTerms() {
+    return normalizeText(state.filters.q).split(/\s+/).filter(Boolean);
+  }
+
+  function filtersActive() {
+    var f = state.filters;
+    return !!(f.q.trim() || f.status || f.source);
+  }
+
+  // 多个关键词（空格分隔）需要同时匹配；按字面查找，输入 ( * 等符号也不会出错
+  function makeMatcher() {
+    var f = state.filters;
+    var terms = searchTerms();
+    return function (p) {
+      if (f.status && p.status !== f.status) return false;
+      if (f.source && p.sourceType !== f.source) return false;
+      if (terms.length) {
+        var hay = searchTextOf(p);
+        for (var i = 0; i < terms.length; i++) if (hay.indexOf(terms[i]) === -1) return false;
+      }
+      return true;
+    };
+  }
+
+  // 默认排序：投稿日期从新到旧；同一天按添加时间从新到旧
+  function compareSubmittedDesc(a, b) {
+    if (a.submittedDate !== b.submittedDate) return a.submittedDate < b.submittedDate ? 1 : -1;
+    if (a.createdAt !== b.createdAt) return a.createdAt < b.createdAt ? 1 : -1;
+    return 0;
+  }
+
+  function sortPapers(list, sortId, today) {
+    if (sortId === 'submitted_asc') {
+      return list.sort(function (a, b) {
+        var va = parseYMD(a.submittedDate) !== null, vb = parseYMD(b.submittedDate) !== null;
+        if (va !== vb) return va ? -1 : 1;   // 日期无效的排最后
+        if (a.submittedDate !== b.submittedDate) return a.submittedDate < b.submittedDate ? -1 : 1;
+        if (a.createdAt !== b.createdAt) return a.createdAt < b.createdAt ? -1 : 1;
+        return 0;
+      });
+    }
+    if (sortId === 'wait_desc' || sortId === 'wait_asc') {
+      // 分组：0 = 还在等待；1 = 已出结果（排在后面）；2 = 日期无效（排最后）
+      var keys = new Map();
+      list.forEach(function (p) {
+        var w = getWaitInfo(p, today);
+        keys.set(p, { group: w.days === null ? 2 : (w.level === 'final' ? 1 : 0), days: w.days || 0 });
+      });
+      var dir = sortId === 'wait_desc' ? -1 : 1;
+      return list.sort(function (a, b) {
+        var ka = keys.get(a), kb = keys.get(b);
+        if (ka.group !== kb.group) return ka.group - kb.group;
+        if (ka.days !== kb.days) return (ka.days - kb.days) * dir;
+        return compareSubmittedDesc(a, b);
+      });
+    }
+    return list.sort(compareSubmittedDesc);
+  }
+
+  function resetFilters() {
+    state.filters = { q: '', status: '', source: '' };
+    els.search.value = '';
+  }
+
+  var filterOptionsSig = '';
+  function syncToolbar() {
+    // 自定义状态有变化时才重建筛选下拉，避免打断正在进行的选择
+    var sig = JSON.stringify(customStatuses());
+    if (sig !== filterOptionsSig) {
+      filterOptionsSig = sig;
+      fillStatusOptions(els.filterStatus, '', true);
+    }
+    if (state.filters.status && !statusIndex[state.filters.status]) state.filters.status = '';
+    els.filterStatus.value = state.filters.status;
+    els.filterSource.value = state.filters.source;
+    els.sortSelect.value = state.sort;
+    if (els.search.value !== state.filters.q) els.search.value = state.filters.q;
+    els.searchClear.hidden = !state.filters.q;
+
+    var n = (state.filters.status ? 1 : 0) + (state.filters.source ? 1 : 0);
+    els.filterCount.hidden = n === 0;
+    els.filterCount.textContent = String(n);
+    els.filterBtn.setAttribute('aria-label', n ? '筛选（已设置 ' + n + ' 个条件）' : '筛选');
+  }
+
+  /* =====================================================================
+   * 十、渲染列表
+   * ===================================================================== */
+  var cardCache = {};   // 论文编号 → { sig, node }，内容没变的卡片直接复用，500 条时筛选也不卡
+  var detailsSeq = 0;
+
+  function cardSig(p, ctx) {
+    return JSON.stringify([p.title, p.sourceType, p.venue, p.manuscriptId, p.submittedDate, p.status,
+      p.statusChangedDate, p.note, p.isSample, p.createdAt, p.trackingUrl, p.lastRecognized || null]) + ctx;
+  }
+
+  function render() {
+    var today = todayStr();
+    state.renderedDay = today;
+    rebuildStatusIndex();
+
+    var all = state.data.papers;
+    if (all.length === 0 && filtersActive()) resetFilters();   // 列表清空后不保留筛选条件
+    syncToolbar();
+
+    var visible = sortPapers(all.filter(makeMatcher()), state.sort, today);
+    state.visible = visible;
+
+    var ctx = '|' + today + '|' + filterOptionsSig;
+    var alive = {};
+    all.forEach(function (p) { alive[p.id] = true; });
+    Object.keys(cardCache).forEach(function (id) { if (!alive[id]) delete cardCache[id]; });
+
+    var frag = document.createDocumentFragment();
+    visible.forEach(function (p) {
+      var sig = cardSig(p, ctx);
+      var cached = cardCache[p.id];
+      if (!cached || cached.sig !== sig) {
+        cached = { sig: sig, node: renderCard(p, today) };
+        cardCache[p.id] = cached;
+      } else {
+        // 复用的卡片：下拉框的值以数据为准（例如保存失败时要回到原状态）
+        cached.node.querySelector('select.status-select').value = p.status;
+      }
+      frag.append(cached.node);
+    });
+    els.list.textContent = '';
+    els.list.append(frag);
+
+    var hasAny = all.length > 0;
+    els.toolbar.hidden = !hasAny;
+    els.empty.hidden = hasAny;
+    els.noMatch.hidden = !hasAny || visible.length > 0;
+    els.list.hidden = visible.length === 0;
+    els.resultBar.hidden = !hasAny || !filtersActive();
+    els.resultText.textContent = '显示 ' + visible.length + ' / ' + all.length + ' 篇';
+    updateMenuCounts();
+  }
+
+  function renderCard(p, today) {
+    var st = getStatus(p.status);
+    var wait = getWaitInfo(p, today);
+    var expanded = !!state.expanded[p.id];
+    var detailsId = 'details-' + (++detailsSeq);
+
+    var li = el('li', 'paper-card' + (expanded ? ' expanded' : ''));
+    li.dataset.id = p.id;
+
+    // 第 1 行：标题（最多 2 行，点击展开）+ 示例标签
+    var top = el('div', 'card-top');
+    var titleBtn = el('button', 'title-btn');
+    titleBtn.type = 'button';
+    titleBtn.dataset.action = 'toggle';
+    titleBtn.setAttribute('aria-expanded', String(expanded));
+    titleBtn.setAttribute('aria-controls', detailsId);
+    titleBtn.append(el('span', 'title-text', p.title || '（未填写标题）'));
+    top.append(titleBtn);
+    if (p.isSample) top.append(el('span', 'tag-sample', '示例'));
+
+    // 第 2 行：来源 · 期刊/会议名 · 稿号
+    var meta = el('div', 'card-meta');
+    meta.append(
+      el('span', 'source-pill', sourceName(p.sourceType)),
+      el('span', 'meta-item' + (p.venue ? '' : ' is-empty'), p.venue || '期刊/会议：未填写'),
+      el('span', 'meta-item' + (p.manuscriptId ? '' : ' is-empty'), '稿号：' + (p.manuscriptId || '未填写'))
+    );
+
+    // 第 3 行：状态（快捷下拉）· 等待天数 · 投稿日期 · 操作
+    var row = el('div', 'card-status');
+    var wrap = el('span', 'status-wrap');
+    setStatusVars(wrap, st);
+    var select = el('select', 'status-select');
+    select.dataset.action = 'status';
+    select.setAttribute('aria-label', '修改状态');
+    fillStatusOptions(select, p.status, false);
+    wrap.append(select);
+
+    var days = el('span', 'days days-' + wait.level);
+    var icon = makeDaysIcon(wait.level);
+    if (icon) days.append(icon);
+    days.append(document.createTextNode(wait.text));
+    days.title = wait.tip;
+
+    var submitted = el('span', 'submitted', '投稿于 ' + (p.submittedDate || '未填写'));
+
+    var actions = el('span', 'card-actions');
+    var editBtn = el('button', 'btn btn-text', '编辑');
+    editBtn.type = 'button';
+    editBtn.dataset.action = 'edit';
+    var delBtn = el('button', 'btn btn-text is-danger', '删除');
+    delBtn.type = 'button';
+    delBtn.dataset.action = 'delete';
+    actions.append(editBtn, delBtn);
+
+    var rowBreak = el('span', 'row-break');
+    rowBreak.setAttribute('aria-hidden', 'true');
+    row.append(wrap, days, rowBreak, submitted, actions);
+
+    // 展开后的详情：备注、状态变更日期、添加日期
+    var details = el('div', 'card-details');
+    details.id = detailsId;
+    details.hidden = !expanded;
+    var dl = el('dl');
+    dl.append(el('dt', null, '备注'));
+    var noteDd = el('dd');
+    noteDd.append(p.note ? el('span', 'note-text', p.note) : el('span', 'note-empty', '无'));
+    dl.append(noteDd);
+    dl.append(el('dt', null, '状态变更'), el('dd', null, p.statusChangedDate || '未记录'));
+    if (p.lastRecognized) {
+      var lr = p.lastRecognized;
+      dl.append(el('dt', null, '最近识别'), el('dd', null, lr.label + '（' + [lr.system, lr.date].filter(Boolean).join('，') + '）'));
+    }
+    if (p.trackingUrl) {
+      var linkDd = el('dd');
+      if (/^https?:\/\//i.test(p.trackingUrl)) {
+        var a = el('a', 'detail-link', p.trackingUrl);
+        a.href = p.trackingUrl;
+        a.target = '_blank';
+        a.rel = 'noopener noreferrer';
+        linkDd.append(a);
+      } else {
+        linkDd.textContent = p.trackingUrl;
+      }
+      dl.append(el('dt', null, '追踪链接'), linkDd);
+    }
+    dl.append(el('dt', null, '添加于'), el('dd', null, localDateOf(p.createdAt) || '未记录'));
+    details.append(dl);
+
+    li.append(top, meta, row, details);
+    return li;
+  }
+
+  // 等待天数徽章前的小图标：橙色档用时钟，红色档用感叹号，其他档不加
+  var SVG_NS = 'http://www.w3.org/2000/svg';
+  function makeDaysIcon(level) {
+    if (level !== 'warn' && level !== 'danger') return null;
+    var svg = document.createElementNS(SVG_NS, 'svg');
+    svg.setAttribute('class', 'days-icon');
+    svg.setAttribute('viewBox', '0 0 16 16');
+    svg.setAttribute('aria-hidden', 'true');
+    svg.setAttribute('fill', 'none');
+    svg.setAttribute('stroke', 'currentColor');
+    svg.setAttribute('stroke-width', '1.8');
+    svg.setAttribute('stroke-linecap', 'round');
+    var circle = document.createElementNS(SVG_NS, 'circle');
+    circle.setAttribute('cx', '8');
+    circle.setAttribute('cy', '8');
+    circle.setAttribute('r', '6.2');
+    var path = document.createElementNS(SVG_NS, 'path');
+    // 时钟指针 / 感叹号
+    path.setAttribute('d', level === 'warn' ? 'M8 4.6V8l2.3 1.5' : 'M8 4.4v4.2M8 11.3v.2');
+    svg.append(circle, path);
+    return svg;
+  }
+
+  // 展开 / 收起卡片（不重绘整个列表）
+  function toggleCard(card) {
+    var id = card.dataset.id;
+    var expanded = !state.expanded[id];
+    if (expanded) state.expanded[id] = true; else delete state.expanded[id];
+    card.classList.toggle('expanded', expanded);
+    card.querySelector('.title-btn').setAttribute('aria-expanded', String(expanded));
+    card.querySelector('.card-details').hidden = !expanded;
+  }
+
+  // 新增或修改后的论文如果被当前筛选条件隐藏，在提示里说一声
+  function hiddenNote(id) {
+    var shown = state.visible.some(function (p) { return p.id === id; });
+    return shown ? '' : '（当前筛选条件下不显示）';
+  }
+
+  /* =====================================================================
+   * 十一、弹窗与确认
+   * ===================================================================== */
+  function openDialog(dialog) {
+    if (typeof dialog.showModal === 'function') {
+      if (!dialog.open) dialog.showModal();
+    } else {
+      dialog.setAttribute('open', '');
+    }
+    document.body.classList.add('modal-open');
+  }
+
+  function closeDialog(dialog) {
+    if (typeof dialog.close === 'function') {
+      if (dialog.open) dialog.close();
+    } else {
+      dialog.removeAttribute('open');
+    }
+  }
+
+  ALL_DIALOGS.forEach(function (d) {
+    d.addEventListener('close', function () {
+      var anyOpen = ALL_DIALOGS.some(function (x) { return x.open; });
+      if (!anyOpen) document.body.classList.remove('modal-open');
+    });
+    d.querySelectorAll('[data-close]').forEach(function (btn) {
+      btn.addEventListener('click', function () { closeDialog(d); });
+    });
+  });
+
+  // 通用确认框，返回 Promise<是否确认>
+  var confirmResolver = null;
+  function askConfirm(opts) {
+    if (confirmResolver) settleConfirm(false);
+    els.confirmTitle.textContent = opts.title;
+    els.confirmMsg.textContent = opts.message || '';
+    els.confirmOk.textContent = opts.okText || '确定';
+    els.confirmOk.className = 'btn ' + (opts.danger === false ? 'btn-primary' : 'btn-danger');
+    openDialog(els.confirm);
+    els.confirmCancel.focus();
+    return new Promise(function (resolve) { confirmResolver = resolve; });
+  }
+
+  function settleConfirm(result) {
+    var resolve = confirmResolver;
+    confirmResolver = null;
+    closeDialog(els.confirm);
+    if (resolve) resolve(result);
+  }
+
+  els.confirmOk.addEventListener('click', function () { settleConfirm(true); });
+  els.confirmCancel.addEventListener('click', function () { settleConfirm(false); });
+  // 按 Esc 关闭 = 取消
+  els.confirm.addEventListener('close', function () { if (confirmResolver) settleConfirm(false); });
+  // 点击确认框外的遮罩 = 取消
+  els.confirm.addEventListener('click', function (e) {
+    if (e.target === els.confirm) settleConfirm(false);
+  });
+
+  /* =====================================================================
+   * 十二、列表上的操作：展开、改状态、编辑、删除
+   * ===================================================================== */
+  function findPaper(id) {
+    for (var i = 0; i < state.data.papers.length; i++) {
+      if (state.data.papers[i].id === id) return state.data.papers[i];
+    }
+    return null;
+  }
+
+  els.list.addEventListener('click', function (e) {
+    var card = e.target.closest('.paper-card');
+    if (!card) return;
+    var actionEl = e.target.closest('[data-action]');
+    var action = actionEl ? actionEl.dataset.action : null;
+
+    if (action === 'edit') return openForm(card.dataset.id);
+    if (action === 'delete') return askDelete(card.dataset.id);
+    if (action === 'status') return;
+    if (action === 'toggle') return toggleCard(card);
+
+    // 点卡片空白处也能展开；在详情区域里点击、或正在选中文字时不切换
+    if (e.target.closest('button, select, a, input, textarea, .card-details')) return;
+    var sel = window.getSelection ? window.getSelection().toString() : '';
+    if (sel) return;
+    toggleCard(card);
+  });
+
+  els.list.addEventListener('change', function (e) {
+    var select = e.target.closest('select[data-action="status"]');
+    if (!select) return;
+    var id = select.closest('.paper-card').dataset.id;
+    changeStatus(id, select.value);
+  });
+
+  // 快捷改状态：立即保存，状态变更日期记为今天
+  function changeStatus(id, newStatus) {
+    var today = todayStr();
+    var missing = false;
+    var result = commit(function (data) {
+      var p = null;
+      data.papers.forEach(function (x) { if (x.id === id) p = x; });
+      if (!p) { missing = true; return false; }
+      if (p.status === newStatus) return false;
+      p.status = newStatus;
+      p.statusChangedDate = today;
+      p.updatedAt = new Date().toISOString();
+    });
+    if (missing) showToast('这条记录已在其他页面被删除');
+    else if (result.changed) showToast('已改为「' + getStatus(newStatus).name + '」' + hiddenNote(id));
+  }
+
+  function askDelete(id) {
+    var p = findPaper(id);
+    if (!p) return;
+    askConfirm({
+      title: '删除这篇论文？',
+      message: '《' + truncate(p.title || '未填写标题', 60) + '》删除后无法恢复。',
+      okText: '删除'
+    }).then(function (ok) {
+      if (!ok) return;
+      var result = commit(function (data) {
+        var before = data.papers.length;
+        data.papers = data.papers.filter(function (x) { return x.id !== id; });
+        if (data.papers.length === before) return false;
+      });
+      delete state.expanded[id];
+      if (result.ok) showToast('已删除');
+    });
+  }
+
+  /* =====================================================================
+   * 十三、添加 / 编辑表单
+   * ===================================================================== */
+  SOURCES.forEach(function (s) {
+    var label = el('label', 'radio-chip');
+    var input = document.createElement('input');
+    input.type = 'radio';
+    input.name = 'sourceType';
+    input.value = s.id;
+    label.append(input, el('span', null, s.name));
+    els.sourceGroup.append(label);
+  });
+
+  var FIELD_ORDER = ['title', 'sourceType', 'submittedDate', 'status', 'statusChangedDate', 'trackingUrl'];
+
+  function setError(field, message) {
+    var box = els.form.querySelector('[data-field="' + field + '"]');
+    var msg = $('e-' + field);
+    if (box) box.classList.toggle('invalid', !!message);
+    if (msg) msg.textContent = message || '';
+    var input = field === 'sourceType' ? null : els[field === 'statusChangedDate' ? 'changedDate' : field];
+    if (input) {
+      if (message) {
+        input.setAttribute('aria-invalid', 'true');
+        input.setAttribute('aria-describedby', 'e-' + field);
+      } else {
+        input.removeAttribute('aria-invalid');
+      }
+    }
+  }
+
+  function clearErrors() {
+    FIELD_ORDER.forEach(function (f) { setError(f, ''); });
+  }
+
+  function getSelectedSource() {
+    var checked = els.sourceGroup.querySelector('input:checked');
+    return checked ? checked.value : '';
+  }
+
+  // 只有选了「已出结果」类的状态才显示出结果日期
+  function syncChangedDateField() {
+    var status = els.status.value;
+    var isFinal = getStatus(status).final;
+    els.changedField.hidden = !isFinal;
+    if (!isFinal) {
+      setError('statusChangedDate', '');
+      return;
+    }
+    var orig = state.editingOriginal;
+    if (orig && orig.status === status && orig.statusChangedDate) {
+      els.changedDate.value = orig.statusChangedDate;  // 状态没变，恢复原来的日期
+    } else {
+      els.changedDate.value = todayStr();               // 新的结果，默认今天
+    }
+  }
+
+  function openForm(id) {
+    var today = todayStr();
+    var p = id ? findPaper(id) : null;
+    if (id && !p) return;
+
+    state.editingId = p ? p.id : null;
+    state.editingOriginal = p ? Object.assign({}, p) : null;
+    els.dialogTitle.textContent = p ? '编辑论文' : '添加论文';
+    els.form.reset();
+    clearErrors();
+
+    // 日期输入框最多只能选到今天
+    els.submittedDate.max = today;
+    els.submittedDate.min = MIN_DATE;
+    els.changedDate.max = today;
+    els.changedDate.min = MIN_DATE;
+
+    fillStatusOptions(els.status, p ? p.status : 'submitted', false);
+    if (p) {
+      els.title.value = p.title;
+      var radios = els.sourceGroup.querySelectorAll('input');
+      for (var i = 0; i < radios.length; i++) radios[i].checked = radios[i].value === p.sourceType;
+      els.venue.value = p.venue;
+      els.manuscriptId.value = p.manuscriptId;
+      els.submittedDate.value = p.submittedDate;
+      els.note.value = p.note;
+      els.trackingUrl.value = p.trackingUrl || '';
+    }
+    syncChangedDateField();
+
+    openDialog(els.dialog);
+    els.dialog.querySelector('.dialog-body').scrollTop = 0;
+    els.title.focus();
+  }
+
+  els.status.addEventListener('change', syncChangedDateField);
+
+  // 读取并整理表单内容
+  function readForm() {
+    return {
+      title: els.title.value.replace(/[\r\n]+/g, ' ').trim(),   // 标题不允许换行
+      sourceType: getSelectedSource(),
+      venue: els.venue.value.trim(),
+      manuscriptId: els.manuscriptId.value.trim(),
+      submittedDate: els.submittedDate.value,
+      status: els.status.value,
+      statusChangedDate: els.changedDate.value,
+      note: els.note.value.replace(/^\s+|\s+$/g, ''),
+      trackingUrl: els.trackingUrl.value.trim()
+    };
+  }
+
+  // 校验，返回 { 字段名: 错误信息 }
+  function validate(v) {
+    var errors = {};
+    var today = todayStr();
+
+    if (!v.title) errors.title = '请填写论文标题';
+    if (!v.sourceType) errors.sourceType = '请选择来源类型';
+
+    if (els.submittedDate.validity && els.submittedDate.validity.badInput) {
+      errors.submittedDate = '投稿日期没有填完整';
+    } else if (!v.submittedDate) {
+      errors.submittedDate = '请选择投稿日期';
+    } else if (parseYMD(v.submittedDate) === null) {
+      errors.submittedDate = '日期格式不正确，请重新选择';
+    } else if (v.submittedDate > today) {
+      errors.submittedDate = '投稿日期不能晚于今天（' + today + '）';
+    } else if (v.submittedDate < MIN_DATE) {
+      errors.submittedDate = '投稿日期不能早于 ' + MIN_DATE + '，请检查年份';
+    }
+
+    var orig = state.editingOriginal;
+    if (!statusIndex[v.status] && !(orig && orig.status === v.status)) {
+      errors.status = '请选择当前状态';
+    }
+
+    if (getStatus(v.status).final) {
+      if (els.changedDate.validity && els.changedDate.validity.badInput) {
+        errors.statusChangedDate = '出结果日期没有填完整';
+      } else if (!v.statusChangedDate) {
+        errors.statusChangedDate = '请选择出结果日期';
+      } else if (parseYMD(v.statusChangedDate) === null) {
+        errors.statusChangedDate = '日期格式不正确，请重新选择';
+      } else if (v.statusChangedDate > today) {
+        errors.statusChangedDate = '出结果日期不能晚于今天（' + today + '）';
+      } else if (!errors.submittedDate && v.statusChangedDate < v.submittedDate) {
+        errors.statusChangedDate = '出结果日期不能早于投稿日期';
+      }
+    }
+    if (v.trackingUrl && !/^https?:\/\/\S+$/i.test(v.trackingUrl)) {
+      errors.trackingUrl = '网址需要以 http:// 或 https:// 开头，中间不能有空格';
+    }
+    return errors;
+  }
+
+  // 算出要保存的状态变更日期
+  function resolveChangedDate(v) {
+    var today = todayStr();
+    if (getStatus(v.status).final) return v.statusChangedDate;
+    var orig = state.editingOriginal;
+    if (orig && orig.status === v.status && parseYMD(orig.statusChangedDate) !== null) {
+      // 状态没变：沿用原日期，但不能早于投稿日期
+      return orig.statusChangedDate < v.submittedDate ? v.submittedDate : orig.statusChangedDate;
+    }
+    // 新增且状态为「已投稿」：状态变更日期就是投稿日期
+    if (!orig && v.status === 'submitted') return v.submittedDate;
+    return today;
+  }
+
+  els.form.addEventListener('submit', function (e) {
+    e.preventDefault();
+    var v = readForm();
+    var errors = validate(v);
+    clearErrors();
+    var first = null;
+    FIELD_ORDER.forEach(function (f) {
+      if (errors[f]) {
+        setError(f, errors[f]);
+        if (!first) first = f;
+      }
+    });
+    if (first) {
+      var focusMap = {
+        title: els.title,
+        sourceType: els.sourceGroup.querySelector('input'),
+        submittedDate: els.submittedDate,
+        status: els.status,
+        statusChangedDate: els.changedDate,
+        trackingUrl: els.trackingUrl
+      };
+      focusMap[first].focus();
+      return;
+    }
+
+    var editingId = state.editingId;
+    var targetId = editingId || newId();
+    var changedDate = resolveChangedDate(v);
+    var now = new Date().toISOString();
+    var missing = false;
+
+    var result = commit(function (data) {
+      if (editingId) {
+        var p = null;
+        data.papers.forEach(function (x) { if (x.id === editingId) p = x; });
+        if (!p) { missing = true; return false; }
+        p.title = v.title;
+        p.sourceType = v.sourceType;
+        p.venue = v.venue;
+        p.manuscriptId = v.manuscriptId;
+        p.submittedDate = v.submittedDate;
+        p.status = v.status;
+        p.statusChangedDate = changedDate;
+        p.note = v.note;
+        p.trackingUrl = v.trackingUrl;
+        p.updatedAt = now;
+      } else {
+        data.papers.push({
+          id: targetId,
+          title: v.title,
+          sourceType: v.sourceType,
+          venue: v.venue,
+          manuscriptId: v.manuscriptId,
+          submittedDate: v.submittedDate,
+          status: v.status,
+          statusChangedDate: changedDate,
+          note: v.note,
+          trackingUrl: v.trackingUrl,
+          isSample: false,
+          createdAt: now,
+          updatedAt: now
+        });
+      }
+    });
+
+    if (missing) {
+      closeDialog(els.dialog);
+      showToast('这条记录已在其他页面被删除，没有保存');
+      return;
+    }
+    if (!result.ok) return;   // 保存失败时保留弹窗，内容不丢
+    closeDialog(els.dialog);
+    showToast((editingId ? '已保存修改' : '已添加') + hiddenNote(targetId));
+  });
+
+  // 标题框里按回车不换行；中文输入法选词时的回车不拦截
+  els.title.addEventListener('keydown', function (e) {
+    if (e.key === 'Enter' && !e.isComposing && e.keyCode !== 229) e.preventDefault();
+  });
+
+  // 单行输入框：输入法选词的回车不触发提交（兼容 Safari）
+  [els.form, els.statusEditor].forEach(function (f) {
+    f.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter' && (e.isComposing || e.keyCode === 229)) e.preventDefault();
+    });
+  });
+
+  els.addBtn.addEventListener('click', function () { openForm(null); });
+
+  /* =====================================================================
+   * 十四、工具栏事件
+   * ===================================================================== */
+  function applySearch() {
+    state.filters.q = els.search.value;
+    render();
+  }
+  els.search.addEventListener('input', function (e) {
+    if (e.isComposing) return;   // 中文输入法还在选词时先不搜
+    applySearch();
+  });
+  els.search.addEventListener('compositionend', applySearch);
+  els.search.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape' && els.search.value) {
+      e.preventDefault();
+      els.search.value = '';
+      applySearch();
+    }
+  });
+  els.searchClear.addEventListener('click', function () {
+    els.search.value = '';
+    applySearch();
+    els.search.focus();
+  });
+
+  els.filterStatus.addEventListener('change', function () {
+    state.filters.status = els.filterStatus.value;
+    render();
+  });
+  els.filterSource.addEventListener('change', function () {
+    state.filters.source = els.filterSource.value;
+    render();
+  });
+  els.sortSelect.addEventListener('change', function () {
+    state.sort = els.sortSelect.value;
+    var p = prefs.load();
+    p.sort = state.sort;
+    prefs.save(p);
+    render();
+  });
+
+  // 手机上展开 / 收起筛选面板
+  els.filterBtn.addEventListener('click', function () {
+    var open = !els.filterPanel.classList.contains('open');
+    els.filterPanel.classList.toggle('open', open);
+    els.filterBtn.setAttribute('aria-expanded', String(open));
+  });
+
+  function clearFilters() {
+    resetFilters();
+    render();
+    showToast('已清除筛选');
+  }
+  $('btn-clear-filters').addEventListener('click', clearFilters);
+  $('btn-clear-filters-2').addEventListener('click', clearFilters);
+
+  // 填充来源与排序下拉
+  (function () {
+    var all = el('option', null, '全部来源');
+    all.value = '';
+    els.filterSource.append(all);
+    SOURCES.forEach(function (s) {
+      var opt = el('option', null, s.name);
+      opt.value = s.id;
+      els.filterSource.append(opt);
+    });
+    SORTS.forEach(function (s) {
+      var opt = el('option', null, s.name);
+      opt.value = s.id;
+      els.sortSelect.append(opt);
+    });
+  })();
+
+  /* =====================================================================
+   * 十五、更多菜单
+   * ===================================================================== */
+  function menuItems() {
+    return Array.prototype.slice.call(els.menu.querySelectorAll('.menu-item'));
+  }
+
+  function updateMenuCounts() {
+    var n = state.visible.length;
+    var total = state.data.papers.length;
+    els.menu.querySelectorAll('[data-export-count]').forEach(function (span) {
+      span.textContent = n ? '当前列表 ' + n + ' 篇' : '当前列表为空';
+      span.parentNode.disabled = n === 0;
+    });
+    els.backupCount.textContent = '共 ' + total + ' 篇';
+  }
+
+  function openMenu() {
+    updateMenuCounts();
+    els.menu.hidden = false;
+    els.moreBtn.setAttribute('aria-expanded', 'true');
+    var first = menuItems().filter(function (b) { return !b.disabled; })[0];
+    if (first) first.focus();
+  }
+
+  function closeMenu(focusButton) {
+    if (els.menu.hidden) return;
+    els.menu.hidden = true;
+    els.moreBtn.setAttribute('aria-expanded', 'false');
+    if (focusButton) els.moreBtn.focus();
+  }
+
+  els.moreBtn.addEventListener('click', function () {
+    if (els.menu.hidden) openMenu(); else closeMenu(false);
+  });
+
+  document.addEventListener('click', function (e) {
+    if (!els.menu.hidden && !e.target.closest('.menu-wrap')) closeMenu(false);
+  });
+
+  els.menu.addEventListener('keydown', function (e) {
+    var items = menuItems().filter(function (b) { return !b.disabled; });
+    var idx = items.indexOf(document.activeElement);
+    if (e.key === 'Escape') {
+      e.preventDefault();
+      closeMenu(true);
+    } else if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+      e.preventDefault();
+      var step = e.key === 'ArrowDown' ? 1 : -1;
+      var next = items[(idx + step + items.length) % items.length];
+      if (next) next.focus();
+    } else if (e.key === 'Tab') {
+      closeMenu(false);
+    }
+  });
+
+  els.menu.addEventListener('click', function (e) {
+    var item = e.target.closest('.menu-item');
+    if (!item || item.disabled) return;
+    closeMenu(false);
+    var action = item.dataset.menu;
+    if (action === 'export-xlsx') exportXlsx();
+    else if (action === 'export-csv') exportCsv();
+    else if (action === 'backup') downloadBackup();
+    else if (action === 'restore') {
+      els.restoreFile.value = '';
+      els.restoreFile.click();
+    } else if (action === 'statuses') openStatusDialog();
+  });
+
+  /* =====================================================================
+   * 十六、导出：Excel / CSV / 备份
+   * ===================================================================== */
+  function downloadBlob(blob, filename) {
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    a.rel = 'noopener';
+    a.style.display = 'none';
+    document.body.append(a);
+    a.click();
+    a.remove();
+    setTimeout(function () { URL.revokeObjectURL(url); }, 30000);
+  }
+
+  function exportFileBase() {
+    return '投稿状态总览_' + todayStr() + (filtersActive() ? '_筛选结果' : '');
+  }
+
+  // 把论文整理成导出用的行
+  function exportRows(papers) {
+    var today = todayStr();
+    return papers.map(function (p) {
+      var st = getStatus(p.status);
+      var w = getWaitInfo(p, today);
+      return {
+        title: p.title,
+        source: sourceName(p.sourceType),
+        venue: p.venue,
+        manuscriptId: p.manuscriptId,
+        submittedDate: p.submittedDate,
+        statusName: statusLabel(p.status),
+        days: (w.days !== null && w.days >= 0) ? w.days : null,
+        daysText: w.text,
+        level: w.level,
+        final: st.final ? '是' : '否',
+        changed: p.statusChangedDate,
+        note: p.note
+      };
+    });
+  }
+
+  // ---------- CSV ----------
+  // 以 = + - @ 开头的文字前加单引号，防止在表格软件里被当成公式执行
+  function csvCell(value) {
+    var s = value == null ? '' : String(value);
+    if (/^[=+\-@\t\r]/.test(s)) s = "'" + s;
+    if (/[",\r\n]/.test(s) || /^\s|\s$/.test(s)) s = '"' + s.replace(/"/g, '""') + '"';
+    return s;
+  }
+
+  function buildCsv(rows) {
+    var lines = [EXPORT_HEADERS.map(csvCell).join(',')];
+    rows.forEach(function (r) {
+      lines.push([
+        csvCell(r.title), csvCell(r.source), csvCell(r.venue), csvCell(r.manuscriptId),
+        csvCell(r.submittedDate), csvCell(r.statusName),
+        r.days !== null ? String(r.days) : csvCell(r.daysText),
+        csvCell(r.final), csvCell(r.changed), csvCell(r.note)
+      ].join(','));
+    });
+    // 开头加 BOM，Windows 上用 Excel 打开中文不乱码
+    return '\uFEFF' + lines.join('\r\n') + '\r\n';
+  }
+
+  function exportCsv() {
+    var rows = exportRows(state.visible);
+    if (!rows.length) return;
+    downloadBlob(new Blob([buildCsv(rows)], { type: 'text/csv;charset=utf-8' }), exportFileBase() + '.csv');
+    showToast('已导出 ' + rows.length + ' 篇（CSV）');
+  }
+
+  // ---------- Excel（.xlsx，由页面自己生成，不依赖外部库） ----------
+  // 去掉 XML 不允许的控制字符和不成对的代理字符（emoji 这类成对的保留）
+  var XML_SUSPECT = /[\u0000-\u0008\u000B\u000C\u000E-\u001F\uD800-\uDFFF\uFFFE\uFFFF]/;
+  function stripInvalidXml(s) {
+    if (!XML_SUSPECT.test(s)) return s;
+    var out = '';
+    for (var i = 0; i < s.length; i++) {
+      var c = s.charCodeAt(i);
+      if (c >= 0xD800 && c <= 0xDBFF) {
+        var next = s.charCodeAt(i + 1);
+        if (next >= 0xDC00 && next <= 0xDFFF) { out += s.charAt(i) + s.charAt(i + 1); i++; }
+        continue;
+      }
+      if (c >= 0xDC00 && c <= 0xDFFF) continue;
+      if ((c < 0x20 && c !== 0x09 && c !== 0x0A && c !== 0x0D) || c === 0xFFFE || c === 0xFFFF) continue;
+      out += s.charAt(i);
+    }
+    return out;
+  }
+
+  function xmlEscape(value) {
+    return stripInvalidXml(String(value))
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
+  }
+
+  var XLSX_MAX_CELL = 32767;   // Excel 单元格最多 32767 个字符
+
+  function xStr(ref, value, style) {
+    if (value == null || value === '') return '';
+    var s = String(value);
+    if (s.length > XLSX_MAX_CELL) s = s.slice(0, XLSX_MAX_CELL);
+    return '<c r="' + ref + '" t="inlineStr" s="' + style + '"><is><t xml:space="preserve">' + xmlEscape(s) + '</t></is></c>';
+  }
+
+  function xNum(ref, n, style) {
+    return '<c r="' + ref + '" s="' + style + '"><v>' + n + '</v></c>';
+  }
+
+  // 日期写成 Excel 能排序的真正日期；无效日期按文字写入
+  var EXCEL_EPOCH = Date.UTC(1899, 11, 30);
+  function xDate(ref, ymd) {
+    var t = parseYMD(ymd);
+    if (t === null) return xStr(ref, ymd, 2);
+    return xNum(ref, Math.round((t - EXCEL_EPOCH) / DAY_MS), 4);
+  }
+
+  var XML_HEAD = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n';
+  var NS_MAIN = 'http://schemas.openxmlformats.org/spreadsheetml/2006/main';
+  var NS_REL = 'http://schemas.openxmlformats.org/officeDocument/2006/relationships';
+  var NS_PKG_REL = 'http://schemas.openxmlformats.org/package/2006/relationships';
+  var SHEET_NAME = '投稿列表';
+  var COL_WIDTHS = [48, 10, 30, 20, 12, 12, 10, 13, 14, 40];
+
+  // 样式编号：0 默认 / 1 表头 / 2 文字 / 3 自动换行文字 / 4 日期 / 5 天数 / 6 天数（橙）/ 7 天数（红）
+  var XLSX_STYLES = XML_HEAD +
+    '<styleSheet xmlns="' + NS_MAIN + '">' +
+    '<numFmts count="1"><numFmt numFmtId="164" formatCode="yyyy-mm-dd"/></numFmts>' +
+    '<fonts count="4">' +
+    '<font><sz val="11"/><name val="等线"/><family val="2"/><charset val="134"/></font>' +
+    '<font><b/><sz val="11"/><name val="等线"/><family val="2"/><charset val="134"/></font>' +
+    '<font><b/><sz val="11"/><color rgb="FF2B1600"/><name val="等线"/><family val="2"/><charset val="134"/></font>' +
+    '<font><b/><sz val="11"/><color rgb="FFFFFFFF"/><name val="等线"/><family val="2"/><charset val="134"/></font>' +
+    '</fonts>' +
+    '<fills count="5">' +
+    '<fill><patternFill patternType="none"/></fill>' +
+    '<fill><patternFill patternType="gray125"/></fill>' +
+    '<fill><patternFill patternType="solid"><fgColor rgb="FFF0F2F5"/><bgColor indexed="64"/></patternFill></fill>' +
+    '<fill><patternFill patternType="solid"><fgColor rgb="FFF28C28"/><bgColor indexed="64"/></patternFill></fill>' +
+    '<fill><patternFill patternType="solid"><fgColor rgb="FFD0312D"/><bgColor indexed="64"/></patternFill></fill>' +
+    '</fills>' +
+    '<borders count="2">' +
+    '<border><left/><right/><top/><bottom/><diagonal/></border>' +
+    '<border><left/><right/><top/><bottom style="thin"><color rgb="FFCDD2DA"/></bottom><diagonal/></border>' +
+    '</borders>' +
+    '<cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>' +
+    '<cellXfs count="8">' +
+    '<xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/>' +
+    '<xf numFmtId="0" fontId="1" fillId="2" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment vertical="center"/></xf>' +
+    '<xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0" applyAlignment="1"><alignment vertical="top"/></xf>' +
+    '<xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0" applyAlignment="1"><alignment vertical="top" wrapText="1"/></xf>' +
+    '<xf numFmtId="164" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1" applyAlignment="1"><alignment horizontal="left" vertical="top"/></xf>' +
+    '<xf numFmtId="1" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1" applyAlignment="1"><alignment horizontal="center" vertical="top"/></xf>' +
+    '<xf numFmtId="1" fontId="2" fillId="3" borderId="0" xfId="0" applyNumberFormat="1" applyFont="1" applyFill="1" applyAlignment="1"><alignment horizontal="center" vertical="top"/></xf>' +
+    '<xf numFmtId="1" fontId="3" fillId="4" borderId="0" xfId="0" applyNumberFormat="1" applyFont="1" applyFill="1" applyAlignment="1"><alignment horizontal="center" vertical="top"/></xf>' +
+    '</cellXfs>' +
+    '<cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles>' +
+    '</styleSheet>';
+
+  function buildXlsxFiles(rows) {
+    var cols = 'ABCDEFGHIJ';
+    var last = rows.length + 1;
+    var ref = 'A1:J' + last;
+    var out = [];
+
+    out.push('<row r="1" ht="22" customHeight="1">' +
+      EXPORT_HEADERS.map(function (h, i) { return xStr(cols[i] + '1', h, 1); }).join('') + '</row>');
+    rows.forEach(function (r, i) {
+      var n = i + 2;
+      var dayStyle = r.level === 'warn' ? 6 : (r.level === 'danger' ? 7 : 5);
+      out.push('<row r="' + n + '">' +
+        xStr('A' + n, r.title, 3) +
+        xStr('B' + n, r.source, 2) +
+        xStr('C' + n, r.venue, 3) +
+        xStr('D' + n, r.manuscriptId, 2) +
+        xDate('E' + n, r.submittedDate) +
+        xStr('F' + n, r.statusName, 2) +
+        (r.days !== null ? xNum('G' + n, r.days, dayStyle) : xStr('G' + n, r.daysText, 2)) +
+        xStr('H' + n, r.final, 2) +
+        xDate('I' + n, r.changed) +
+        xStr('J' + n, r.note, 3) +
+        '</row>');
+    });
+
+    var sheet = XML_HEAD +
+      '<worksheet xmlns="' + NS_MAIN + '" xmlns:r="' + NS_REL + '">' +
+      '<dimension ref="' + ref + '"/>' +
+      '<sheetViews><sheetView workbookViewId="0" tabSelected="1">' +
+      '<pane ySplit="1" topLeftCell="A2" activePane="bottomLeft" state="frozen"/>' +
+      '<selection pane="bottomLeft" activeCell="A2" sqref="A2"/>' +
+      '</sheetView></sheetViews>' +
+      '<sheetFormatPr defaultRowHeight="15"/>' +
+      '<cols>' + COL_WIDTHS.map(function (w, i) {
+        return '<col min="' + (i + 1) + '" max="' + (i + 1) + '" width="' + w + '" customWidth="1"/>';
+      }).join('') + '</cols>' +
+      '<sheetData>' + out.join('') + '</sheetData>' +
+      '<autoFilter ref="' + ref + '"/>' +
+      '<pageMargins left="0.7" right="0.7" top="0.75" bottom="0.75" header="0.3" footer="0.3"/>' +
+      '</worksheet>';
+
+    var workbook = XML_HEAD +
+      '<workbook xmlns="' + NS_MAIN + '" xmlns:r="' + NS_REL + '">' +
+      '<bookViews><workbookView/></bookViews>' +
+      '<sheets><sheet name="' + SHEET_NAME + '" sheetId="1" r:id="rId1"/></sheets>' +
+      '<definedNames><definedName name="_xlnm._FilterDatabase" localSheetId="0" hidden="1">\'' +
+      SHEET_NAME + '\'!$A$1:$J$' + last + '</definedName></definedNames>' +
+      '</workbook>';
+
+    return [
+      { name: '[Content_Types].xml', data: XML_HEAD +
+        '<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">' +
+        '<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>' +
+        '<Default Extension="xml" ContentType="application/xml"/>' +
+        '<Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>' +
+        '<Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>' +
+        '<Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/>' +
+        '</Types>' },
+      { name: '_rels/.rels', data: XML_HEAD +
+        '<Relationships xmlns="' + NS_PKG_REL + '">' +
+        '<Relationship Id="rId1" Type="' + NS_REL + '/officeDocument" Target="xl/workbook.xml"/>' +
+        '</Relationships>' },
+      { name: 'xl/workbook.xml', data: workbook },
+      { name: 'xl/_rels/workbook.xml.rels', data: XML_HEAD +
+        '<Relationships xmlns="' + NS_PKG_REL + '">' +
+        '<Relationship Id="rId1" Type="' + NS_REL + '/worksheet" Target="worksheets/sheet1.xml"/>' +
+        '<Relationship Id="rId2" Type="' + NS_REL + '/styles" Target="styles.xml"/>' +
+        '</Relationships>' },
+      { name: 'xl/styles.xml', data: XLSX_STYLES },
+      { name: 'xl/worksheets/sheet1.xml', data: sheet }
+    ];
+  }
+
+  // ---------- 最简 ZIP 打包（不压缩），.xlsx 本质上是一个 ZIP ----------
+  var CRC_TABLE = (function () {
+    var t = new Uint32Array(256);
+    for (var n = 0; n < 256; n++) {
+      var c = n;
+      for (var k = 0; k < 8; k++) c = (c & 1) ? (0xEDB88320 ^ (c >>> 1)) : (c >>> 1);
+      t[n] = c >>> 0;
+    }
+    return t;
+  })();
+
+  function crc32(bytes) {
+    var c = 0xFFFFFFFF;
+    for (var i = 0; i < bytes.length; i++) c = CRC_TABLE[(c ^ bytes[i]) & 0xFF] ^ (c >>> 8);
+    return (c ^ 0xFFFFFFFF) >>> 0;
+  }
+
+  function makeZip(files, mime) {
+    var enc = new TextEncoder();
+    var parts = [];
+    var central = [];
+    var offset = 0;
+    var d = new Date();
+    var dosTime = (d.getHours() << 11) | (d.getMinutes() << 5) | Math.floor(d.getSeconds() / 2);
+    var dosDate = ((Math.max(d.getFullYear(), 1980) - 1980) << 9) | ((d.getMonth() + 1) << 5) | d.getDate();
+
+    files.forEach(function (f) {
+      var name = enc.encode(f.name);
+      var data = enc.encode(f.data);
+      var crc = crc32(data);
+
+      var lh = new DataView(new ArrayBuffer(30));   // 本地文件头
+      lh.setUint32(0, 0x04034b50, true);
+      lh.setUint16(4, 20, true);
+      lh.setUint16(6, 0x0800, true);                // 文件名用 UTF-8
+      lh.setUint16(8, 0, true);                     // 不压缩
+      lh.setUint16(10, dosTime, true);
+      lh.setUint16(12, dosDate, true);
+      lh.setUint32(14, crc, true);
+      lh.setUint32(18, data.length, true);
+      lh.setUint32(22, data.length, true);
+      lh.setUint16(26, name.length, true);
+      lh.setUint16(28, 0, true);
+      parts.push(new Uint8Array(lh.buffer), name, data);
+
+      var ch = new DataView(new ArrayBuffer(46));   // 中央目录记录
+      ch.setUint32(0, 0x02014b50, true);
+      ch.setUint16(4, 20, true);
+      ch.setUint16(6, 20, true);
+      ch.setUint16(8, 0x0800, true);
+      ch.setUint16(10, 0, true);
+      ch.setUint16(12, dosTime, true);
+      ch.setUint16(14, dosDate, true);
+      ch.setUint32(16, crc, true);
+      ch.setUint32(20, data.length, true);
+      ch.setUint32(24, data.length, true);
+      ch.setUint16(28, name.length, true);
+      ch.setUint16(30, 0, true);
+      ch.setUint16(32, 0, true);
+      ch.setUint16(34, 0, true);
+      ch.setUint16(36, 0, true);
+      ch.setUint32(38, 0, true);
+      ch.setUint32(42, offset, true);
+      central.push(new Uint8Array(ch.buffer), name);
+
+      offset += 30 + name.length + data.length;
+    });
+
+    var cdSize = central.reduce(function (s, a) { return s + a.length; }, 0);
+    var end = new DataView(new ArrayBuffer(22));      // 中央目录结束记录
+    end.setUint32(0, 0x06054b50, true);
+    end.setUint16(4, 0, true);
+    end.setUint16(6, 0, true);
+    end.setUint16(8, files.length, true);
+    end.setUint16(10, files.length, true);
+    end.setUint32(12, cdSize, true);
+    end.setUint32(16, offset, true);
+    end.setUint16(20, 0, true);
+
+    return new Blob(parts.concat(central, [new Uint8Array(end.buffer)]), { type: mime });
+  }
+
+  function exportXlsx() {
+    var rows = exportRows(state.visible);
+    if (!rows.length) return;
+    var blob = makeZip(buildXlsxFiles(rows), 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    downloadBlob(blob, exportFileBase() + '.xlsx');
+    showToast('已导出 ' + rows.length + ' 篇（Excel）');
+  }
+
+  // ---------- 备份（全部数据） ----------
+  function backupBlob(data) {
+    var payload = {
+      app: APP_ID,
+      type: 'backup',
+      schemaVersion: SCHEMA_VERSION,
+      exportedAt: new Date().toISOString(),
+      papers: data.papers,
+      customStatuses: data.customStatuses,
+      pasteAliases: data.pasteAliases || []
+    };
+    return new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+  }
+
+  function downloadBackup(prefix) {
+    var data = loadData();
+    downloadBlob(backupBlob(data), (prefix || '投稿备份_') + todayStr() + '.json');
+    if (!prefix) showToast('已备份 ' + data.papers.length + ' 篇论文');
+  }
+
+  /* =====================================================================
+   * 十七、从备份恢复
+   * ===================================================================== */
+  function parseBackup(text) {
+    var obj;
+    try { obj = JSON.parse(text); } catch (e) {
+      return { error: '无法读取这个文件：它不是有效的备份文件。' };
+    }
+    if (!obj || typeof obj !== 'object' || Array.isArray(obj) || !Array.isArray(obj.papers)) {
+      return { error: '这个文件不是本工具导出的备份，请选择「备份全部数据」生成的 .json 文件。' };
+    }
+    var papers = normalizePapers(obj.papers);
+    var statuses = normalizeCustomStatuses(obj.customStatuses);
+    if (!papers.length && !statuses.length) {
+      return { error: '这个备份文件里没有任何论文。' };
+    }
+    return {
+      papers: papers,
+      customStatuses: statuses,
+      pasteAliases: normalizeAliases(obj.pasteAliases),
+      exportedAt: typeof obj.exportedAt === 'string' ? localDateOf(obj.exportedAt) : ''
+    };
+  }
+
+  function onlySamples(data) {
+    return data.customStatuses.length === 0 && data.papers.every(function (p) { return p.isSample; });
+  }
+
+  els.restoreFile.addEventListener('change', function () {
+    var file = els.restoreFile.files && els.restoreFile.files[0];
+    els.restoreFile.value = '';
+    if (!file) return;
+    if (file.size > MAX_IMPORT_BYTES) {
+      showBanner('restore', '备份文件太大（超过 5 MB），无法恢复。请确认选择的是本工具导出的备份文件。');
+      return;
+    }
+    file.text().then(function (text) {
+      var parsed = parseBackup(text);
+      if (parsed.error) {
+        showBanner('restore', parsed.error);
+        return;
+      }
+      parsed.fileName = file.name;
+      openRestoreDialog(parsed);
+    }, function () {
+      showBanner('restore', '读取文件失败，请重新选择。');
+    });
+  });
+
+  function openRestoreDialog(backup) {
+    hideBanner('restore');
+    state.pendingRestore = backup;
+    var current = loadData();
+    var samplesOnly = onlySamples(current);
+
+    els.restoreFileInfo.textContent = '文件：' + backup.fileName + (backup.exportedAt ? '（备份于 ' + backup.exportedAt + '）' : '');
+    els.restoreSummary.textContent = '备份里有 ' + backup.papers.length + ' 篇论文' +
+      (backup.customStatuses.length ? '、' + backup.customStatuses.length + ' 个自定义状态' : '') +
+      '；当前有 ' + current.papers.length + ' 篇' +
+      (current.papers.length && samplesOnly ? '（都是示例数据）' : '') + '。';
+    els.overwriteDesc.textContent = samplesOnly
+      ? '清空当前数据，换成备份里的内容。当前只有示例数据，建议选这一项。'
+      : '清空当前数据，换成备份里的内容。覆盖前会自动下载一份当前数据的备份。';
+    var mode = samplesOnly ? 'overwrite' : 'merge';
+    els.restoreForm.querySelector('input[value="' + mode + '"]').checked = true;
+    openDialog(els.restoreDialog);
+  }
+
+  els.restoreForm.addEventListener('submit', function (e) {
+    e.preventDefault();
+    var backup = state.pendingRestore;
+    if (!backup) return;
+    var mode = els.restoreForm.querySelector('input[name="restoreMode"]:checked').value;
+    if (mode === 'merge') {
+      closeDialog(els.restoreDialog);
+      doMerge(backup);
+      return;
+    }
+    var current = loadData();
+    if (onlySamples(current)) {
+      closeDialog(els.restoreDialog);
+      doOverwrite(backup);
+      return;
+    }
+    askConfirm({
+      title: '用备份覆盖当前数据？',
+      message: '当前的 ' + current.papers.length + ' 篇论文' +
+        (current.customStatuses.length ? '和 ' + current.customStatuses.length + ' 个自定义状态' : '') +
+        '会被替换。覆盖前会先自动下载一份当前数据的备份。',
+      okText: '下载备份并覆盖'
+    }).then(function (ok) {
+      if (!ok) return;
+      downloadBackup('投稿备份_覆盖前_');
+      closeDialog(els.restoreDialog);
+      doOverwrite(backup);
+    });
+  });
+
+  function cloneList(list) { return JSON.parse(JSON.stringify(list)); }
+
+  function afterRestore() {
+    state.pendingRestore = null;
+    state.expanded = {};
+    resetFilters();
+    render();
+  }
+
+  function doOverwrite(backup) {
+    var result = commit(function (data) {
+      data.papers = cloneList(backup.papers);
+      data.customStatuses = cloneList(backup.customStatuses);
+      data.pasteAliases = cloneList(backup.pasteAliases || []);
+      data.seeded = true;
+    });
+    afterRestore();
+    if (result.ok) showToast('已用备份覆盖，共 ' + backup.papers.length + ' 篇');
+  }
+
+  function paperKey(p) {
+    return p.title && p.submittedDate ? nameKey(p.title) + '|' + p.submittedDate : '';
+  }
+
+  function doMerge(backup) {
+    var stats = { added: 0, updated: 0, skipped: 0, statuses: 0 };
+    var result = commit(function (data) {
+      // 1. 合并自定义状态：同编号保留现有设置；同名的并到现有状态
+      var idMap = {};
+      var byId = {};
+      var byName = {};
+      data.customStatuses.forEach(function (s) { byId[s.id] = s; byName[nameKey(s.name)] = s; });
+      cloneList(backup.customStatuses).forEach(function (s) {
+        var k = nameKey(s.name);
+        if (byId[s.id]) { idMap[s.id] = s.id; return; }
+        if (byName[k]) { idMap[s.id] = byName[k].id; return; }
+        idMap[s.id] = s.id;
+        if (data.customStatuses.length >= MAX_CUSTOM) return;   // 超过上限：这些论文会显示为未知状态
+        data.customStatuses.push(s);
+        byId[s.id] = s;
+        byName[k] = s;
+        stats.statuses++;
+      });
+
+      // 2. 合并论文：同编号、或标题和投稿日期都相同的，视为同一篇，保留最后修改较新的版本
+      var byPid = {};
+      var byKey = {};
+      data.papers.forEach(function (p, i) {
+        byPid[p.id] = i;
+        var k = paperKey(p);
+        if (k && byKey[k] === undefined) byKey[k] = i;
+      });
+      cloneList(backup.papers).forEach(function (p) {
+        if (idMap[p.status]) p.status = idMap[p.status];
+        var k = paperKey(p);
+        var idx = byPid[p.id];
+        if (idx === undefined && k) idx = byKey[k];
+        if (idx === undefined) {
+          data.papers.push(p);
+          byPid[p.id] = data.papers.length - 1;
+          if (k && byKey[k] === undefined) byKey[k] = data.papers.length - 1;
+          stats.added++;
+          return;
+        }
+        var cur = data.papers[idx];
+        if ((p.updatedAt || '') > (cur.updatedAt || '')) {
+          p.id = cur.id;
+          data.papers[idx] = p;
+          stats.updated++;
+        } else {
+          stats.skipped++;
+        }
+      });
+      // 3. 合并记住的说法：同一个说法以现有设置为准
+      var aliasSeen = {};
+      (data.pasteAliases || []).forEach(function (a) { aliasSeen[aliasKey(a.text)] = true; });
+      data.pasteAliases = data.pasteAliases || [];
+      (backup.pasteAliases || []).forEach(function (a) {
+        if (aliasSeen[aliasKey(a.text)] || data.pasteAliases.length >= MAX_ALIASES) return;
+        data.pasteAliases.push({ text: a.text, statusId: idMap[a.statusId] || a.statusId });
+        aliasSeen[aliasKey(a.text)] = true;
+        stats.aliases = (stats.aliases || 0) + 1;
+      });
+      if (!stats.added && !stats.updated && !stats.statuses && !stats.aliases) return false;
+    });
+    afterRestore();
+    if (!result.ok) return;
+    if (!result.changed) {
+      showToast('备份里的内容都已存在，没有变化');
+      return;
+    }
+    var parts = ['新增 ' + stats.added + ' 篇', '更新 ' + stats.updated + ' 篇'];
+    if (stats.skipped) parts.push('跳过 ' + stats.skipped + ' 篇（已是最新）');
+    if (stats.statuses) parts.push('新增 ' + stats.statuses + ' 个状态');
+    if (stats.aliases) parts.push('新增 ' + stats.aliases + ' 个记住的说法');
+    showToast('已合并：' + parts.join('，'));
+  }
+
+  /* =====================================================================
+   * 十八、管理自定义状态
+   * ===================================================================== */
+  // 生成颜色选项
+  PALETTE.forEach(function (c, i) {
+    var label = el('label', 'swatch');
+    label.title = c.name;
+    var input = document.createElement('input');
+    input.type = 'radio';
+    input.name = 'statusColor';
+    input.value = c.color;
+    input.setAttribute('aria-label', c.name);
+    var span = el('span');
+    span.style.setProperty('--c', c.color);
+    label.append(input, span);
+    els.sSwatches.append(label);
+  });
+
+  function usageCount(statusId) {
+    return state.data.papers.filter(function (p) { return p.status === statusId; }).length;
+  }
+
+  function makeChip(st) {
+    var chip = el('span', 'status-chip', st.name);
+    setStatusVars(chip, st);
+    return chip;
+  }
+
+  function setStatusMessage(error, ok) {
+    els.statusListError.textContent = error || '';
+    els.statusListOk.textContent = ok || '';
+  }
+
+  function renderStatusDialog() {
+    rebuildStatusIndex();
+    els.presetChips.textContent = '';
+    PRESET_STATUSES.forEach(function (s) { els.presetChips.append(makeChip(s)); });
+
+    els.customList.textContent = '';
+    var customs = customStatuses();
+    if (!customs.length) {
+      els.customList.append(el('li', 'custom-empty', '还没有自定义状态'));
+    }
+    customs.forEach(function (s) {
+      var st = statusIndex[s.id];
+      var li = el('li', 'custom-row');
+      li.dataset.id = s.id;
+      li.append(makeChip(st));
+      if (st.final) li.append(el('span', 'tag-final', '已出结果'));
+      var n = usageCount(s.id);
+      li.append(el('span', 'row-meta', n ? '使用中 ' + n + ' 篇' : '未使用'));
+      var actions = el('span', 'row-actions');
+      var edit = el('button', 'btn btn-text', '编辑');
+      edit.type = 'button';
+      edit.dataset.saction = 'edit';
+      var del = el('button', 'btn btn-text is-danger', '删除');
+      del.type = 'button';
+      del.dataset.saction = 'delete';
+      actions.append(edit, del);
+      li.append(actions);
+      els.customList.append(li);
+    });
+
+    renderAliasList();
+
+    var full = customs.length >= MAX_CUSTOM;
+    els.newStatusBtn.disabled = full;
+    els.newStatusBtn.textContent = full ? '已达到 ' + MAX_CUSTOM + ' 个上限' : '＋ 新增状态';
+  }
+
+  function openStatusDialog() {
+    setStatusMessage('', '');
+    hideStatusEditor();
+    renderStatusDialog();
+    openDialog(els.statusDialog);
+  }
+
+  function hideStatusEditor() {
+    state.editingStatusId = null;
+    els.statusEditor.hidden = true;
+    els.newStatusBtn.hidden = false;
+  }
+
+  function setNameError(message) {
+    $('e-s-name').textContent = message || '';
+    els.statusEditor.querySelector('[data-sfield="name"]').classList.toggle('invalid', !!message);
+    if (message) els.sName.setAttribute('aria-invalid', 'true'); else els.sName.removeAttribute('aria-invalid');
+  }
+
+  function openStatusEditor(id) {
+    var s = null;
+    customStatuses().forEach(function (x) { if (x.id === id) s = x; });
+    if (id && !s) return;
+    state.editingStatusId = s ? s.id : null;
+    setStatusMessage('', '');
+    setNameError('');
+    els.statusEditorTitle.textContent = s ? '编辑状态' : '新增状态';
+    els.sName.value = s ? s.name : '';
+    els.sFinal.checked = s ? s.final : false;
+
+    // 颜色：编辑时用原颜色；新增时优先选还没被用过的颜色
+    var color = s ? s.color : null;
+    if (!color) {
+      var used = {};
+      customStatuses().forEach(function (x) { used[x.color] = true; });
+      var free = PALETTE.filter(function (c) { return !used[c.color]; })[0];
+      color = (free || PALETTE[0]).color;
+    }
+    els.sSwatches.querySelectorAll('input').forEach(function (r) { r.checked = r.value === color; });
+
+    var n = s ? usageCount(s.id) : 0;
+    els.sFinalHint.hidden = n === 0;
+    els.sFinalHint.textContent = n ? '有 ' + n + ' 篇论文在用这个状态，修改后会按新设置显示和计算天数。' : '';
+
+    els.statusEditor.hidden = false;
+    els.newStatusBtn.hidden = true;
+    els.sName.focus();
+    els.statusEditor.scrollIntoView({ block: 'nearest' });
+  }
+
+  function validateStatusName(name, selfId) {
+    if (!name) return '请填写状态名称';
+    if (Array.from(name).length > MAX_STATUS_NAME) return '名称最多 ' + MAX_STATUS_NAME + ' 个字';
+    var k = nameKey(name);
+    if (k === nameKey(UNKNOWN_STATUS.name)) return '「' + UNKNOWN_STATUS.name + '」是保留名称，请换一个';
+    var list = PRESET_STATUSES.concat(customStatuses());
+    for (var i = 0; i < list.length; i++) {
+      if (list[i].id !== selfId && nameKey(list[i].name) === k) return '已经有叫「' + list[i].name + '」的状态了';
+    }
+    return '';
+  }
+
+  els.newStatusBtn.addEventListener('click', function () { openStatusEditor(null); });
+  els.sCancel.addEventListener('click', function () {
+    hideStatusEditor();
+    els.newStatusBtn.focus();
+  });
+
+  els.statusEditor.addEventListener('submit', function (e) {
+    e.preventDefault();
+    var name = els.sName.value.trim();
+    var selfId = state.editingStatusId;
+    var err = validateStatusName(name, selfId);
+    if (err) {
+      setNameError(err);
+      els.sName.focus();
+      return;
+    }
+    setNameError('');
+    var checkedColor = els.sSwatches.querySelector('input:checked');
+    var color = checkedColor ? checkedColor.value : PALETTE[0].color;
+    var isFinal = els.sFinal.checked;
+    var missing = false;
+    var full = false;
+
+    var result = commit(function (data) {
+      if (selfId) {
+        var s = null;
+        data.customStatuses.forEach(function (x) { if (x.id === selfId) s = x; });
+        if (!s) { missing = true; return false; }
+        s.name = name;
+        s.color = color;
+        s.final = isFinal;
+      } else {
+        if (data.customStatuses.length >= MAX_CUSTOM) { full = true; return false; }
+        data.customStatuses.push({ id: 'c_' + newId(), name: name, color: color, final: isFinal });
+      }
+    });
+
+    hideStatusEditor();
+    renderStatusDialog();
+    if (missing) setStatusMessage('这个状态已在其他页面被删除。', '');
+    else if (full) setStatusMessage('自定义状态最多 ' + MAX_CUSTOM + ' 个。', '');
+    else if (result.ok) setStatusMessage('', '已保存「' + name + '」');
+    els.newStatusBtn.focus();
+  });
+
+  els.customList.addEventListener('click', function (e) {
+    var btn = e.target.closest('[data-saction]');
+    if (!btn) return;
+    var id = btn.closest('.custom-row').dataset.id;
+    if (btn.dataset.saction === 'edit') {
+      openStatusEditor(id);
+      return;
+    }
+    var st = statusIndex[id];
+    if (!st) return;
+    var n = usageCount(id);
+    if (n > 0) {
+      setStatusMessage('「' + st.name + '」正在被 ' + n + ' 篇论文使用，请先把这些论文改成其他状态，再删除。', '');
+      return;
+    }
+    setStatusMessage('', '');
+    askConfirm({ title: '删除状态「' + st.name + '」？', message: '删除后无法恢复。', okText: '删除' }).then(function (ok) {
+      if (!ok) return;
+      var blocked = 0;
+      var result = commit(function (data) {
+        // 保存前再确认一次没有论文在用（可能在其他页面刚改过）
+        blocked = data.papers.filter(function (p) { return p.status === id; }).length;
+        if (blocked) return false;
+        var before = data.customStatuses.length;
+        data.customStatuses = data.customStatuses.filter(function (x) { return x.id !== id; });
+        if (data.customStatuses.length === before) return false;
+        data.pasteAliases = (data.pasteAliases || []).filter(function (a) { return a.statusId !== id; });
+      });
+      if (state.editingStatusId === id) hideStatusEditor();
+      renderStatusDialog();
+      if (blocked) setStatusMessage('「' + st.name + '」正在被 ' + blocked + ' 篇论文使用，请先把这些论文改成其他状态，再删除。', '');
+      else if (result.ok) setStatusMessage('', '已删除「' + st.name + '」');
+    });
+  });
+
+  /* =====================================================================
+   * 十八之二、粘贴识别（测试版）
+   * 原则：粘贴的文字只在弹窗打开期间留在输入框里，关闭弹窗即清空；
+   *       不写入本地存储，不发送任何网络请求。只保存识别出的结果（状态、稿号、标题）。
+   * ===================================================================== */
+  var paste = { result: null, rows: [], unknownText: '', unknown: null };
+
+  // 需要用户二选一的情况
+  var KIND_CHOICES = {
+    revise: [{ id: 'major_revision', name: '大修' }, { id: 'minor_revision', name: '小修' }],
+    reject_or_resubmit: [{ id: 'rejected', name: '被拒' }, { id: 'major_revision', name: '大修（重投）' }]
+  };
+  var KIND_QUESTION = {
+    revise: '编辑要求修改，但没说是大修还是小修，请看决定信后选择：',
+    reject_or_resubmit: '被拒，但系统允许重投。请按决定信选择：'
+  };
+  var SYSTEM_SHORT = { em: 'Elsevier', s1: 'IEEE ScholarOne', ap: 'IEEE Author Portal' };
+
+  function openPasteDialog() {
+    clearPaste();
+    setPasteError('');
+    showPasteStep('input');
+    openDialog(els.pasteDialog);
+    els.pasteText.focus();
+  }
+
+  function showPasteStep(step) {
+    var isInput = step === 'input';
+    els.pasteStepInput.hidden = !isInput;
+    els.pasteStepResult.hidden = isInput;
+    els.pasteGo.hidden = !isInput;
+    els.pasteBack.hidden = isInput;
+    els.pasteApply.hidden = isInput;
+    els.pasteApplyError.textContent = '';
+    els.pasteDialog.querySelector('.dialog-body').scrollTop = 0;
+  }
+
+  function setPasteError(message) {
+    $('e-pasteText').textContent = message || '';
+    els.pasteText.closest('.field').classList.toggle('invalid', !!message);
+  }
+
+  // 清空粘贴内容和识别结果（关闭弹窗时一定会调用）
+  function clearPaste() {
+    els.pasteText.value = '';
+    paste = { result: null, rows: [], unknownText: '', unknown: null };
+    els.pasteRows.textContent = '';
+    els.pasteUnknown.textContent = '';
+    els.pasteNotices.textContent = '';
+    els.pasteApplyError.textContent = '';
+  }
+
+  els.pasteBtn.addEventListener('click', openPasteDialog);
+  els.pasteDialog.addEventListener('close', clearPaste);
+  els.pasteBack.addEventListener('click', function () {
+    showPasteStep('input');
+    els.pasteText.focus();
+  });
+  els.pasteGo.addEventListener('click', runRecognition);
+  els.pasteText.addEventListener('input', function () { setPasteError(''); });
+  els.pasteText.addEventListener('keydown', function (e) {
+    if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+      e.preventDefault();
+      runRecognition();
+    }
+  });
+
+  function runRecognition() {
+    var text = els.pasteText.value;
+    if (!text.trim()) {
+      setPasteError('请先粘贴投稿系统页面的文字');
+      els.pasteText.focus();
+      return;
+    }
+    if (text.length > 200000) {
+      setPasteError('文字太长，请只复制稿件列表或状态那一部分');
+      return;
+    }
+    setPasteError('');
+    state.data = loadData();
+    rebuildStatusIndex();
+    var aliases = (state.data.pasteAliases || []).filter(function (a) { return statusIndex[a.statusId]; });
+    paste.result = PasteRecognizer.recognize(text, { aliases: aliases });
+    paste.unknownText = '';
+    if (!paste.result.records.length) {
+      var t = text.replace(/\s+/g, ' ').trim();
+      if (text.trim().indexOf('\n') < 0 && t.length <= MAX_ALIAS_LEN) paste.unknownText = t;
+    }
+    showPasteStep('result');
+    renderPasteResult();
+    els.pasteSource.focus();
+  }
+
+  function rowStatus(row) {
+    return KIND_CHOICES[row.rec.kind] ? row.choice : row.rec.statusId;
+  }
+
+  function renderPasteResult() {
+    var result = paste.result;
+    var papers = state.data.papers;
+    var n = result.records.length;
+    els.pasteSource.textContent = n
+      ? '识别到 ' + n + ' 篇稿件' + (result.systemName ? '，来源：' + result.systemName : '（没能判断来源，已按所有支持的系统识别）')
+      : '没有识别到状态';
+
+    els.pasteNotices.textContent = '';
+    result.notices.forEach(function (text) { els.pasteNotices.append(el('li', null, text)); });
+
+    els.pasteRows.textContent = '';
+    els.pasteUnknown.textContent = '';
+    els.pasteUnknown.hidden = true;
+    paste.rows = [];
+    paste.unknown = null;
+
+    var claimed = {};
+    var today = todayStr();
+    result.records.forEach(function (rec, i) {
+      var match = PasteRecognizer.matchRecord(rec, papers);
+      var row = { rec: rec, match: match, skip: '', choice: '', dupOf: 0, target: '', checked: false, date: '' };
+      if (rec.kind === 'draft') row.skip = '尚未完成投稿的草稿，不导入。';
+      else if (rec.kind === 'replaced') row.skip = '这份稿件已被新提交的版本取代，不修改。';
+      else if (rec.kind === 'none') row.skip = '没有找到这篇稿件的状态，不修改。';
+      else if (!KIND_CHOICES[rec.kind] && !statusIndex[rec.statusId]) row.skip = '这个说法对应的状态已被删除。';
+
+      if (!row.skip && match.paper) {
+        if (claimed[match.paper.id]) row.dupOf = claimed[match.paper.id];
+        else claimed[match.paper.id] = i + 1;
+      }
+      row.target = match.paper ? match.paper.id : (rec.title ? 'new' : '');
+      row.checked = !row.skip && !row.dupOf && !!row.target;
+      var d = rec.firstDate;
+      row.date = d && parseYMD(d) !== null && d <= today && d >= MIN_DATE ? d : today;
+      paste.rows.push(row);
+      els.pasteRows.append(renderPasteRow(row, i));
+    });
+
+    if (!n) renderUnknown();
+    updateApplyButton();
+  }
+
+  function renderPasteRow(row, i) {
+    var rec = row.rec;
+    var li = el('li', 'paste-row');
+    li.dataset.i = i;
+    var main = el('div', 'row-main');
+    var head = el('div', 'row-head');
+    main.append(head);
+
+    if (row.skip) {
+      li.classList.add('is-skip');
+      head.append(el('span', 'row-phrase', rec.label || '未识别到状态'));
+      main.append(el('p', 'row-title' + (rec.title ? '' : ' is-empty'), rec.title || '（没有找到标题）'));
+      if (rec.manuscriptId) main.append(el('p', 'row-meta2', '稿号：' + rec.manuscriptId));
+      main.append(el('p', 'row-meta2', row.skip));
+      li.append(main);
+      return li;
+    }
+
+    var checkWrap = el('label', 'row-check');
+    var check = document.createElement('input');
+    check.type = 'checkbox';
+    check.dataset.role = 'check';
+    check.setAttribute('aria-label', '应用第 ' + (i + 1) + ' 条');
+    checkWrap.append(check);
+
+    head.append(el('span', 'row-pill'));
+    head.append(el('span', 'row-phrase', rec.label));
+    if (rec.stage && !(statusIndex[rec.statusId] && statusIndex[rec.statusId].name === rec.stage && rec.kind === 'status')) {
+      head.append(el('span', 'row-stage', rec.stage));
+    }
+
+    main.append(el('p', 'row-title' + (rec.title ? '' : ' is-empty'), rec.title || '（没有找到标题）'));
+    var metaParts = [];
+    if (rec.manuscriptId) metaParts.push('稿号：' + rec.manuscriptId);
+    if (rec.venue) metaParts.push(rec.venue);
+    if (metaParts.length) main.append(el('p', 'row-meta2', metaParts.join('，')));
+
+    if (KIND_CHOICES[rec.kind]) {
+      main.append(el('p', 'row-meta2', KIND_QUESTION[rec.kind]));
+      var choice = el('div', 'row-choice');
+      choice.setAttribute('role', 'radiogroup');
+      choice.setAttribute('aria-label', '第 ' + (i + 1) + ' 条的状态');
+      KIND_CHOICES[rec.kind].forEach(function (c) {
+        var label = el('label', 'radio-chip');
+        var input = document.createElement('input');
+        input.type = 'radio';
+        input.name = 'paste-choice-' + i;
+        input.value = c.id;
+        input.dataset.role = 'choice';
+        label.append(input, el('span', null, c.name));
+        choice.append(label);
+      });
+      main.append(choice);
+    }
+
+    var target = el('div', 'row-target');
+    var selectId = 'paste-target-' + i;
+    var tLabel = el('label', 'field-label', '对应论文');
+    tLabel.htmlFor = selectId;
+    var select = el('select', 'input');
+    select.id = selectId;
+    select.dataset.role = 'target';
+    if (!rec.title && !row.match.paper) {
+      var ph = el('option', null, '请选择要更新的论文');
+      ph.value = '';
+      select.append(ph);
+    }
+    if (rec.title) {
+      var optNew = el('option', null, '新增为一篇论文');
+      optNew.value = 'new';
+      select.append(optNew);
+    }
+    state.data.papers.forEach(function (p) {
+      var opt = el('option', null, '更新：' + truncate(p.title || '未填写标题', 36) + (p.manuscriptId ? '（' + p.manuscriptId + '）' : ''));
+      opt.value = p.id;
+      select.append(opt);
+    });
+    target.append(tLabel, select, el('p', 'match-hint'));
+    main.append(target);
+
+    var newBox = el('div', 'row-new');
+    var dateId = 'paste-date-' + i;
+    var dLabel = el('label', 'field-label', '投稿日期');
+    dLabel.htmlFor = dateId;
+    var date = document.createElement('input');
+    date.type = 'date';
+    date.className = 'input';
+    date.id = dateId;
+    date.dataset.role = 'date';
+    date.max = todayStr();
+    date.min = MIN_DATE;
+    newBox.append(dLabel, date, el('p', 'hint', rec.firstDate ? '取自粘贴内容中最早的日期，请核对' : '粘贴内容里没有日期，默认今天，请改成实际投稿日期'));
+    main.append(newBox);
+
+    li.append(checkWrap, main);
+    updateRowView(li, row);
+    return li;
+  }
+
+  // 根据行的当前选择刷新显示（不重建节点，保留键盘焦点）
+  function updateRowView(li, row) {
+    var rec = row.rec;
+    var check = li.querySelector('[data-role="check"]');
+    if (!check) return;
+    check.checked = row.checked;
+    li.classList.toggle('is-off', !row.checked);
+
+    var status = rowStatus(row);
+    var pill = li.querySelector('.row-pill');
+    var chip = status ? makeChip(getStatus(status)) : el('span', 'status-chip', '待选择');
+    if (!status) setStatusVars(chip, UNKNOWN_STATUS);
+    chip.classList.add('row-pill');
+    pill.replaceWith(chip);
+    li.classList.toggle('needs-choice', row.checked && !status);
+
+    var select = li.querySelector('[data-role="target"]');
+    select.value = row.target;
+    li.querySelector('.row-new').hidden = row.target !== 'new';
+    li.querySelector('[data-role="date"]').value = row.date;
+
+    var hint = li.querySelector('.match-hint');
+    var warn = false;
+    var text = '';
+    var paper = row.target && row.target !== 'new' ? findPaper(row.target) : null;
+    if (row.dupOf) {
+      text = '和第 ' + row.dupOf + ' 条是同一篇论文，默认不应用。';
+      warn = true;
+    } else if (row.target === 'new') {
+      text = row.match.type === 'new' ? '没有找到对应的论文，将新增一篇。' : '将新增一篇论文。';
+    } else if (!row.target) {
+      text = '没有找到对应的论文，也没有识别到标题，请选择要更新的论文。';
+      warn = true;
+    } else if (paper && row.match.paper && row.match.paper.id === row.target) {
+      if (row.match.type === 'id') {
+        text = '按稿号匹配' + (rec.revision ? '（修改稿 R' + rec.revision + '）' : '') + '。';
+      } else if (row.match.type === 'title_newid') {
+        text = '标题相同但稿号不同，可能是重投后的新稿号。应用后稿号会改为 ' + rec.manuscriptId + '。';
+        warn = true;
+      } else {
+        text = '按标题匹配。';
+      }
+    } else {
+      text = '将更新你选择的论文。';
+    }
+    if (paper) {
+      text += '当前状态：' + statusLabel(paper.status) + (status && paper.status === status ? '，状态没有变化，只记录识别结果。' : '。');
+    }
+    hint.textContent = text;
+    hint.classList.toggle('is-warn', warn);
+  }
+
+  els.pasteRows.addEventListener('change', function (e) {
+    var li = e.target.closest('.paste-row');
+    if (!li || !paste.rows[+li.dataset.i]) return;
+    var row = paste.rows[+li.dataset.i];
+    var role = e.target.dataset.role;
+    if (role === 'check') row.checked = e.target.checked;
+    else if (role === 'choice') { row.choice = e.target.value; row.checked = true; }
+    else if (role === 'target') { row.target = e.target.value; row.dupOf = 0; if (row.target) row.checked = true; }
+    else if (role === 'date') row.date = e.target.value;
+    else return;
+    els.pasteApplyError.textContent = '';
+    updateRowView(li, row);
+    updateApplyButton();
+  });
+
+  // 一个状态也没识别到
+  function renderUnknown() {
+    var box = els.pasteUnknown;
+    box.hidden = false;
+    box.textContent = '';
+    if (!paste.unknownText) {
+      box.append(
+        el('p', null, '没有识别到任何状态。'),
+        el('p', 'hint', '可以只复制状态那一格的文字（例如 Awaiting Reviewer Scores）再试一次。如果工具不认识这个说法，可以教它记住。')
+      );
+      return;
+    }
+    paste.unknown = { status: '', target: '', remember: true };
+    box.append(el('p', null, '工具还不认识「' + paste.unknownText + '」这个说法。你可以告诉它对应哪个状态：'));
+
+    var f1 = el('div', 'field');
+    var l1 = el('label', 'field-label', '对应状态');
+    l1.htmlFor = 'unknown-status';
+    var s1 = el('select', 'input');
+    s1.id = 'unknown-status';
+    s1.dataset.urole = 'status';
+    fillStatusOptions(s1, '', false);
+    var ph1 = el('option', null, '请选择');
+    ph1.value = '';
+    s1.insertBefore(ph1, s1.firstChild);
+    s1.value = '';
+    f1.append(l1, s1);
+
+    var f2 = el('div', 'field');
+    var l2 = el('label', 'field-label', '同时更新这篇论文（选填）');
+    l2.htmlFor = 'unknown-target';
+    var s2 = el('select', 'input');
+    s2.id = 'unknown-target';
+    s2.dataset.urole = 'target';
+    var ph2 = el('option', null, state.data.papers.length ? '不更新论文，只记住说法' : '还没有论文');
+    ph2.value = '';
+    s2.append(ph2);
+    state.data.papers.forEach(function (p) {
+      var opt = el('option', null, truncate(p.title || '未填写标题', 36) + (p.manuscriptId ? '（' + p.manuscriptId + '）' : ''));
+      opt.value = p.id;
+      s2.append(opt);
+    });
+    f2.append(l2, s2);
+
+    var remember = el('label', 'check-row');
+    var rc = document.createElement('input');
+    rc.type = 'checkbox';
+    rc.checked = true;
+    rc.dataset.urole = 'remember';
+    remember.append(rc, el('span', null, '记住这个说法，下次粘贴时自动识别'));
+    box.append(f1, f2, remember);
+  }
+
+  els.pasteUnknown.addEventListener('change', function (e) {
+    var u = paste.unknown;
+    if (!u) return;
+    var role = e.target.dataset.urole;
+    if (role === 'status') u.status = e.target.value;
+    else if (role === 'target') u.target = e.target.value;
+    else if (role === 'remember') u.remember = e.target.checked;
+    els.pasteApplyError.textContent = '';
+    updateApplyButton();
+  });
+
+  function updateApplyButton() {
+    var n = paste.rows.filter(function (r) { return !r.skip && r.checked; }).length;
+    var u = paste.unknown;
+    if (u) {
+      els.pasteApply.textContent = '保存';
+      els.pasteApply.disabled = false;
+      els.pasteApply.hidden = false;
+      return;
+    }
+    els.pasteApply.hidden = !paste.rows.length || paste.rows.every(function (r) { return r.skip; });
+    els.pasteApply.textContent = n ? '应用 ' + n + ' 条' : '应用';
+    els.pasteApply.disabled = n === 0;
+  }
+
+  function recognizedMark(label, rec, today) {
+    return {
+      label: String(label).slice(0, MAX_ALIAS_LEN),
+      system: rec && rec.viaAlias ? '记住的说法' : (SYSTEM_SHORT[paste.result && paste.result.system] || ''),
+      date: today
+    };
+  }
+
+  // 更新一篇已有论文；返回 true 表示状态有变化
+  function applyToPaper(p, status, mark, today, now) {
+    var changed = p.status !== status;
+    if (changed) {
+      p.status = status;
+      p.statusChangedDate = p.submittedDate && today < p.submittedDate ? p.submittedDate : today;
+    }
+    p.lastRecognized = mark;
+    p.updatedAt = now;
+    return changed;
+  }
+
+  els.pasteApply.addEventListener('click', function () {
+    var today = todayStr();
+    var now = new Date().toISOString();
+    var errors = [];
+    var ops = [];
+
+    paste.rows.forEach(function (row, i) {
+      if (row.skip || !row.checked) return;
+      var status = rowStatus(row);
+      var no = '第 ' + (i + 1) + ' 条';
+      if (!status) {
+        errors.push(no + '：请选择「' + KIND_CHOICES[row.rec.kind].map(function (c) { return c.name; }).join('」还是「') + '」');
+      } else if (!row.target) {
+        errors.push(no + '：请选择要更新的论文');
+      } else if (row.target === 'new' && (parseYMD(row.date) === null || row.date > today || row.date < MIN_DATE)) {
+        errors.push(no + '：请填写正确的投稿日期（不能晚于今天）');
+      } else {
+        ops.push({ row: row, status: status });
+      }
+    });
+
+    var u = paste.unknown;
+    if (u) {
+      if (!u.status) errors.push('请选择这个说法对应的状态');
+      else if (!u.target && !u.remember) errors.push('请选择要更新的论文，或勾选「记住这个说法」');
+    } else if (!ops.length && !errors.length) {
+      errors.push('请至少勾选一条');
+    }
+
+    if (errors.length) {
+      els.pasteApplyError.textContent = errors.join('；');
+      var firstBad = els.pasteRows.querySelector('.needs-choice') || els.pasteApplyError;
+      if (firstBad.scrollIntoView) firstBad.scrollIntoView({ block: 'center' });
+      return;
+    }
+
+    var stats = { updated: 0, same: 0, added: 0, missing: 0, alias: false, full: false };
+    var result = commit(function (data) {
+      ops.forEach(function (op) {
+        var rec = op.row.rec;
+        var mark = recognizedMark(rec.label, rec, today);
+        if (op.row.target === 'new') {
+          var sub = op.row.date;
+          var st = getStatus(op.status);
+          var changedDate = today;
+          if (st.final) {
+            if (rec.lastDate && parseYMD(rec.lastDate) !== null && rec.lastDate >= sub && rec.lastDate <= today) changedDate = rec.lastDate;
+          } else if (op.status === 'submitted') {
+            changedDate = sub;
+          }
+          data.papers.push({
+            id: newId(),
+            title: rec.title,
+            sourceType: paste.result.sourceType || 'other',
+            venue: rec.venue || '',
+            manuscriptId: rec.manuscriptId || '',
+            submittedDate: sub,
+            status: op.status,
+            statusChangedDate: changedDate,
+            note: '',
+            trackingUrl: '',
+            lastRecognized: mark,
+            isSample: false,
+            createdAt: now,
+            updatedAt: now
+          });
+          stats.added++;
+          return;
+        }
+        var p = null;
+        data.papers.forEach(function (x) { if (x.id === op.row.target) p = x; });
+        if (!p) { stats.missing++; return; }
+        if (applyToPaper(p, op.status, mark, today, now)) stats.updated++; else stats.same++;
+        var isNewId = op.row.match.type === 'title_newid' && op.row.match.paper && op.row.match.paper.id === p.id;
+        if (rec.manuscriptId && (!p.manuscriptId || isNewId)) p.manuscriptId = rec.manuscriptId;
+        if (!p.venue && rec.venue) p.venue = rec.venue;
+      });
+
+      if (u && u.status) {
+        if (u.remember) {
+          var key = aliasKey(paste.unknownText);
+          data.pasteAliases = (data.pasteAliases || []).filter(function (a) { return aliasKey(a.text) !== key; });
+          if (data.pasteAliases.length < MAX_ALIASES) {
+            data.pasteAliases.push({ text: paste.unknownText, statusId: u.status });
+            stats.alias = true;
+          } else {
+            stats.full = true;
+          }
+        }
+        if (u.target) {
+          var tp = null;
+          data.papers.forEach(function (x) { if (x.id === u.target) tp = x; });
+          if (!tp) stats.missing++;
+          else if (applyToPaper(tp, u.status, { label: paste.unknownText, system: '手动指定', date: today }, today, now)) stats.updated++;
+          else stats.same++;
+        }
+      }
+    });
+    if (!result.ok) return;   // 保存失败：保留弹窗和选择
+
+    var parts = [];
+    if (stats.updated) parts.push('更新 ' + stats.updated + ' 篇');
+    if (stats.added) parts.push('新增 ' + stats.added + ' 篇');
+    if (stats.same) parts.push(stats.same + ' 篇状态没变');
+    if (stats.missing) parts.push(stats.missing + ' 篇已在其他页面被删除');
+    if (stats.alias) parts.push('已记住「' + truncate(paste.unknownText, 20) + '」');
+    if (stats.full) parts.push('记住的说法已达 ' + MAX_ALIASES + ' 个上限，没有保存');
+    closeDialog(els.pasteDialog);
+    showToast(parts.length ? '粘贴识别：' + parts.join('，') : '没有需要保存的内容');
+  });
+
+  // 管理状态弹窗里的「记住的说法」
+  function renderAliasList() {
+    els.aliasList.textContent = '';
+    var list = (state.data && state.data.pasteAliases) || [];
+    if (!list.length) {
+      els.aliasList.append(el('li', 'custom-empty', '还没有记住的说法'));
+      return;
+    }
+    list.forEach(function (a) {
+      var li = el('li', 'custom-row');
+      li.dataset.alias = a.text;
+      li.append(el('span', 'alias-text', a.text), el('span', 'row-meta', '对应'));
+      li.append(statusIndex[a.statusId] ? makeChip(statusIndex[a.statusId]) : el('span', 'row-meta', '状态已删除'));
+      var actions = el('span', 'row-actions');
+      var del = el('button', 'btn btn-text is-danger', '删除');
+      del.type = 'button';
+      del.dataset.aaction = 'delete';
+      del.setAttribute('aria-label', '删除说法「' + a.text + '」');
+      actions.append(del);
+      li.append(actions);
+      els.aliasList.append(li);
+    });
+  }
+
+  els.aliasList.addEventListener('click', function (e) {
+    var btn = e.target.closest('[data-aaction="delete"]');
+    if (!btn) return;
+    var text = btn.closest('.custom-row').dataset.alias;
+    var result = commit(function (data) {
+      var before = (data.pasteAliases || []).length;
+      data.pasteAliases = (data.pasteAliases || []).filter(function (a) { return aliasKey(a.text) !== aliasKey(text); });
+      if (data.pasteAliases.length === before) return false;
+    });
+    renderStatusDialog();
+    if (result.ok) setStatusMessage('', '已删除说法「' + text + '」');
+  });
+
+  /* =====================================================================
+   * 十九、跨标签页同步与跨天刷新
+   * ===================================================================== */
+  window.addEventListener('storage', function (e) {
+    if (e.key !== null && e.key !== STORAGE_KEY) return;
+    state.data = loadData();
+    render();
+    if (els.statusDialog.open) renderStatusDialog();
+  });
+
+  function refreshIfNewDay() {
+    if (state.renderedDay !== todayStr()) render();
+  }
+  document.addEventListener('visibilitychange', function () {
+    if (!document.hidden) refreshIfNewDay();
+  });
+  setInterval(refreshIfNewDay, 60000);
+
+  /* =====================================================================
+   * 二十、启动
+   * ===================================================================== */
+  var savedSort = prefs.load().sort;
+  if (SORTS.some(function (s) { return s.id === savedSort; })) state.sort = savedSort;
+
+  store.init();
+  if (!store.available) {
+    state.data = emptyData();
+    state.data.papers = makeSamples();
+    showStorageUnavailable();
+  } else {
+    state.data = loadData();
+  }
+  render();
+})();
+</script>
+</body>
+</html>
